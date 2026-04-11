@@ -274,6 +274,14 @@
       vertical-align: middle; margin-left: 6px;
     }
     .label-check { color: #22c55e; margin-left: 6px; font-size: 13px; vertical-align: middle; }
+    /* ── VOICE CONTROL ───────────────────────────────────── */
+    #voice-btn-row { display:flex; align-items:center; gap:8px; margin:8px 0 4px; }
+    #voiceBtn { background:#1e3a5f; color:#38bdf8; border:1px solid #38bdf8; border-radius:6px; padding:5px 12px; cursor:pointer; display:flex; align-items:center; gap:5px; font-size:12px; white-space:nowrap; transition:background .2s; }
+    #voiceBtn:hover { background:rgba(56,189,248,0.2); }
+    #voiceBtn.listening { background:#7f1d1d; border-color:#f87171; color:#f87171; animation:vcpulse 1s ease-in-out infinite; }
+    #voice-status { font-size:11px; color:#94a3b8; font-style:italic; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; min-width:0; }
+    #voice-toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%); background:#0f172a; border:1px solid #38bdf8; color:#38bdf8; padding:8px 20px; border-radius:20px; font-size:13px; display:none; z-index:9999; pointer-events:none; }
+    @keyframes vcpulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
   </style>
 </head>
 <body>
@@ -334,6 +342,14 @@
     <button onclick="flyTo('tunel')">Túnel</button>
     <button id="drawBtn" onclick="toggleDrawMode()">Desenhar</button>
     <button onclick="flyTo('centro')">Centro</button>
+  </div>
+
+  <div id="voice-btn-row">
+    <button id="voiceBtn" onclick="toggleVoice()" title="Controle por voz (pt-BR)">
+      <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+      <span id="voiceBtnLabel">Voz</span>
+    </button>
+    <div id="voice-status"></div>
   </div>
 
   <h2><i data-lucide="layers" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px"></i> Camadas</h2>
@@ -2115,6 +2131,109 @@ window.addEventListener('DOMContentLoaded', () => {
     console.warn('Chaves não configuradas nas constantes do código');
   }
 });
+
+// ── VOICE CONTROL ──────────────────────────────────────────────────────────
+let voiceRecognition = null;
+let voiceActive = false;
+
+const VOICE_COMMANDS = [
+  // Localização
+  { patterns: ['ir para porto', 'ver porto', 'porto'],             action: () => flyTo('porto') },
+  { patterns: ['ir para tecon', 'ver tecon', 'tecon'],             action: () => flyTo('tecon') },
+  { patterns: ['ir para btp', 'ver btp', 'btp'],                   action: () => flyTo('btp') },
+  { patterns: ['ir para alemoa', 'ver alemoa', 'alemoa'],          action: () => flyTo('alemoa') },
+  { patterns: ['ir para canal', 'ver canal', 'canal'],             action: () => flyTo('canal') },
+  { patterns: ['ir para túnel', 'ir para tunel', 'túnel', 'tunel'], action: () => flyTo('tunel') },
+  { patterns: ['ir para centro', 'ver centro', 'centro'],          action: () => flyTo('centro') },
+  // Ligar/desligar explícito — verificados antes dos toggles genéricos
+  { patterns: ['mostrar navios', 'ligar navios'],                  action: () => setLayerVoice('toggleShips', 'ships', true) },
+  { patterns: ['esconder navios', 'ocultar navios', 'desligar navios'], action: () => setLayerVoice('toggleShips', 'ships', false) },
+  { patterns: ['mostrar ais', 'ligar ais'],                        action: () => setLayerVoice('toggleAIS', 'ais', true) },
+  { patterns: ['esconder ais', 'ocultar ais', 'desligar ais'],     action: () => setLayerVoice('toggleAIS', 'ais', false) },
+  { patterns: ['mostrar ruas', 'ligar ruas'],                      action: () => setLayerVoice('toggleStreets', 'streets', true) },
+  { patterns: ['esconder ruas', 'ocultar ruas', 'desligar ruas'],  action: () => setLayerVoice('toggleStreets', 'streets', false) },
+  { patterns: ['mostrar sombras', 'ligar sombras'],                action: () => setLayerVoice('toggleShadows', 'shadows', true) },
+  { patterns: ['esconder sombras', 'ocultar sombras'],             action: () => setLayerVoice('toggleShadows', 'shadows', false) },
+  { patterns: ['mostrar mapa 3d', 'ligar mapa 3d', 'ligar tiles'], action: () => setLayerVoice('toggle3DTiles', 'tiles3d', true) },
+  { patterns: ['esconder mapa 3d', 'desligar mapa 3d', 'desligar tiles'], action: () => setLayerVoice('toggle3DTiles', 'tiles3d', false) },
+  // Toggle genérico
+  { patterns: ['mapa 3d', 'tiles', 'fotorrealista'],               action: () => toggleLayerVoice('toggle3DTiles', 'tiles3d') },
+  { patterns: ['ruas', 'nomes de ruas'],                           action: () => toggleLayerVoice('toggleStreets', 'streets') },
+  { patterns: ['navios simulados', 'navios'],                      action: () => toggleLayerVoice('toggleShips', 'ships') },
+  { patterns: ['ais', 'navios ais', 'tempo real'],                 action: () => toggleLayerVoice('toggleAIS', 'ais') },
+  { patterns: ['labels', 'rótulos', 'nomes navios'],               action: () => toggleLayerVoice('toggleLabels', 'labels') },
+  { patterns: ['sombras'],                                         action: () => toggleLayerVoice('toggleShadows', 'shadows') },
+  { patterns: ['túnel santos', 'túnel santos guarujá'],            action: () => toggleLayerVoice('toggleTunnel', 'tunnel') },
+];
+
+function toggleLayerVoice(checkboxId, layerKey) {
+  const cb = document.getElementById(checkboxId);
+  if (cb) { cb.checked = !cb.checked; toggleLayer(layerKey); }
+}
+
+function setLayerVoice(checkboxId, layerKey, value) {
+  const cb = document.getElementById(checkboxId);
+  if (cb && cb.checked !== value) { cb.checked = value; toggleLayer(layerKey); }
+}
+
+function processVoiceCommand(transcript) {
+  const text = transcript.toLowerCase().trim();
+  document.getElementById('voice-status').textContent = '\u201c' + transcript + '\u201d';
+  showVoiceToast(transcript);
+  for (const cmd of VOICE_COMMANDS) {
+    if (cmd.patterns.some(p => text.includes(p))) {
+      cmd.action();
+      return;
+    }
+  }
+}
+
+function showVoiceToast(text) {
+  const t = document.getElementById('voice-toast');
+  t.textContent = 'Comando: \u201c' + text + '\u201d';
+  t.style.display = 'block';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.display = 'none'; }, 2500);
+}
+
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    alert('Reconhecimento de voz não suportado. Use Chrome ou Edge.');
+    return;
+  }
+  if (voiceActive) {
+    voiceRecognition && voiceRecognition.stop();
+    voiceActive = false;
+    document.getElementById('voiceBtn').classList.remove('listening');
+    document.getElementById('voiceBtnLabel').textContent = 'Voz';
+    document.getElementById('voice-status').textContent = '';
+  } else {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    voiceRecognition = new SR();
+    voiceRecognition.lang = 'pt-BR';
+    voiceRecognition.continuous = true;
+    voiceRecognition.interimResults = false;
+    voiceRecognition.onresult = function(e) {
+      const t = e.results[e.results.length - 1][0].transcript;
+      processVoiceCommand(t);
+    };
+    voiceRecognition.onerror = function(e) {
+      if (e.error === 'no-speech') return;
+      voiceActive = false;
+      document.getElementById('voiceBtn').classList.remove('listening');
+      document.getElementById('voiceBtnLabel').textContent = 'Voz';
+    };
+    voiceRecognition.onend = function() {
+      if (voiceActive) voiceRecognition.start(); // mantém ouvindo
+    };
+    voiceRecognition.start();
+    voiceActive = true;
+    document.getElementById('voiceBtn').classList.add('listening');
+    document.getElementById('voiceBtnLabel').textContent = 'Ouvindo\u2026';
+  }
+}
+// ── END VOICE CONTROL ──────────────────────────────────────────────────────
 </script>
+<div id="voice-toast"></div>
 </body>
 </html>
