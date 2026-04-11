@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Porto de Santos — Gêmeo Digital 3D</title>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.125/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; }
+    #cesiumContainer { width: 100%; height: 100%; }
+
+
+    #controls {
+      position: absolute; top: 16px; left: 16px;
+      background: rgba(15, 23, 42, 0.92); backdrop-filter: blur(12px);
+      color: #e2e8f0; padding: 20px; border-radius: 12px;
+      width: 300px; max-height: calc(100vh - 32px); overflow-y: auto;
+      z-index: 1000; box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    #controls h1 { font-size: 16px; font-weight: 700; margin-bottom: 4px; color: #38bdf8; }
+    #controls .subtitle { font-size: 11px; color: #94a3b8; margin-bottom: 16px; }
+    #controls h2 {
+      font-size: 12px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.05em; color: #64748b; margin: 14px 0 8px;
+      padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.06);
+    }
+    #controls h2:first-of-type { border-top: none; margin-top: 0; }
+    .control-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .control-row label { font-size: 13px; color: #cbd5e1; }
+    .control-row input[type="range"] { width: 120px; accent-color: #38bdf8; }
+    .control-row input[type="checkbox"] { accent-color: #38bdf8; width: 16px; height: 16px; }
+    .control-row .value { font-size: 11px; color: #94a3b8; min-width: 36px; text-align: right; }
+    .btn-group { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+    .btn-group button {
+      flex: 1; min-width: 55px; padding: 6px 8px;
+      border: 1px solid rgba(255,255,255,0.12); border-radius: 6px;
+      background: rgba(30, 41, 59, 0.6); color: #cbd5e1;
+      font-size: 11px; cursor: pointer; transition: all 0.2s;
+    }
+    .btn-group button:hover { background: rgba(56, 189, 248, 0.2); border-color: #38bdf8; }
+    .btn-group button.active { background: rgba(56, 189, 248, 0.3); border-color: #38bdf8; color: #fff; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: #94a3b8; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.3); }
+
+    #info-panel {
+      position: absolute; bottom: 16px; left: 16px;
+      background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(12px);
+      color: #e2e8f0; padding: 12px 16px; border-radius: 10px;
+      font-size: 12px; z-index: 1000; border: 1px solid rgba(255,255,255,0.08);
+    }
+    #info-panel span { color: #38bdf8; font-weight: 600; }
+
+    #ship-count {
+      position: absolute; top: 16px; right: 16px;
+      background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(12px);
+      color: #e2e8f0; padding: 10px 16px; border-radius: 10px;
+      font-size: 13px; z-index: 1000; border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    #token-overlay {
+      position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(15, 23, 42, 0.95); display: flex;
+      align-items: center; justify-content: center; z-index: 9999;
+    }
+    #token-overlay .card {
+      background: #1e293b; border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px; padding: 32px; max-width: 520px;
+      text-align: center; color: #e2e8f0;
+    }
+    #token-overlay h2 { color: #38bdf8; margin-bottom: 12px; }
+    #token-overlay p { font-size: 14px; color: #94a3b8; margin-bottom: 14px; line-height: 1.5; }
+    #token-overlay .field { margin-bottom: 14px; text-align: left; }
+    #token-overlay .field label { font-size: 12px; color: #64748b; display: block; margin-bottom: 4px; }
+    #token-overlay input {
+      width: 100%; padding: 10px 14px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.15);
+      background: rgba(15, 23, 42, 0.8); color: #e2e8f0; font-size: 13px;
+    }
+    #token-overlay button {
+      padding: 10px 24px; border-radius: 8px; border: none;
+      background: #38bdf8; color: #0f172a; font-weight: 600; font-size: 14px; cursor: pointer;
+      margin-top: 8px;
+    }
+    #token-overlay a { color: #38bdf8; }
+
+    .cesium-viewer-bottom { display: none !important; }
+
+    /* === Google Earth-style navigation widget === */
+    #ge-nav {
+      position: absolute; right: 16px; bottom: 100px;
+      z-index: 1000; display: none; flex-direction: column; align-items: center; gap: 10px;
+      user-select: none;
+    }
+
+    /* Compass ring — rotation + tilt */
+    #ge-compass {
+      position: relative; width: 100px; height: 100px;
+    }
+    #ge-compass-ring {
+      width: 100px; height: 100px; border-radius: 50%;
+      background: rgba(20, 25, 40, 0.85);
+      border: 2px solid rgba(255,255,255,0.12);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      position: relative; cursor: grab;
+      transition: border-color 0.2s;
+    }
+    #ge-compass-ring:hover { border-color: rgba(56, 189, 248, 0.4); }
+    /* N indicator */
+    #ge-compass-n {
+      position: absolute; top: 4px; left: 50%; transform: translateX(-50%);
+      color: #ef4444; font-size: 12px; font-weight: 800; pointer-events: none;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+    }
+    /* Compass arrow */
+    #ge-compass-arrow {
+      position: absolute; top: 50%; left: 50%;
+      width: 4px; height: 36px; transform: translate(-50%, -100%);
+      pointer-events: none;
+    }
+    #ge-compass-arrow::before {
+      content: ''; display: block; width: 0; height: 0;
+      border-left: 6px solid transparent; border-right: 6px solid transparent;
+      border-bottom: 14px solid #ef4444;
+      position: absolute; top: 0; left: -4px;
+    }
+    #ge-compass-arrow::after {
+      content: ''; display: block; width: 0; height: 0;
+      border-left: 5px solid transparent; border-right: 5px solid transparent;
+      border-top: 12px solid rgba(255,255,255,0.4);
+      position: absolute; bottom: -14px; left: -3px;
+    }
+    /* Center button — reset north */
+    #ge-compass-center {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 24px; height: 24px; border-radius: 50%;
+      background: rgba(40, 50, 70, 0.9); border: 1.5px solid rgba(255,255,255,0.2);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s; z-index: 2;
+    }
+    #ge-compass-center:hover { background: rgba(56, 189, 248, 0.4); border-color: #38bdf8; }
+    #ge-compass-center::after {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.5);
+    }
+
+    /* D-pad — pan/look around */
+    #ge-dpad {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 70px; height: 70px; pointer-events: none;
+    }
+    .ge-dpad-btn {
+      position: absolute; width: 22px; height: 22px;
+      background: transparent; border: none; cursor: pointer;
+      color: rgba(255,255,255,0.5); font-size: 14px;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: all; border-radius: 3px; transition: all 0.15s;
+    }
+    .ge-dpad-btn:hover { color: #fff; background: rgba(56,189,248,0.3); }
+    .ge-dpad-btn:active { color: #38bdf8; }
+    .ge-dpad-btn.up    { top: -2px; left: 50%; transform: translateX(-50%); }
+    .ge-dpad-btn.down  { bottom: -2px; left: 50%; transform: translateX(-50%); }
+    .ge-dpad-btn.left  { left: -2px; top: 50%; transform: translateY(-50%); }
+    .ge-dpad-btn.right { right: -2px; top: 50%; transform: translateY(-50%); }
+
+    /* Zoom slider */
+    #ge-zoom {
+      display: flex; flex-direction: column; align-items: center;
+      background: rgba(20, 25, 40, 0.85); border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1); padding: 4px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .ge-zoom-btn {
+      width: 36px; height: 36px; border: none; border-radius: 50%;
+      background: transparent; color: #e2e8f0; font-size: 20px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; font-weight: 300;
+    }
+    .ge-zoom-btn:hover { color: #38bdf8; background: rgba(56,189,248,0.15); }
+    .ge-zoom-btn:active { background: rgba(56,189,248,0.3); }
+    #ge-zoom-track {
+      width: 4px; height: 80px; background: rgba(255,255,255,0.1);
+      border-radius: 2px; margin: 2px 0; position: relative; cursor: pointer;
+    }
+    #ge-zoom-thumb {
+      width: 12px; height: 12px; background: #38bdf8; border-radius: 50%;
+      position: absolute; left: -4px; top: 50%;
+      transform: translateY(-50%); pointer-events: none;
+      box-shadow: 0 0 6px rgba(56,189,248,0.5);
+    }
+
+    /* Tilt slider — between compass and zoom */
+    #ge-tilt {
+      display: flex; flex-direction: row; align-items: center; gap: 4px;
+      background: rgba(20, 25, 40, 0.85); border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.1); padding: 6px 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    .ge-tilt-btn {
+      width: 22px; height: 22px; border: none; border-radius: 4px;
+      background: rgba(20,25,40,0.85); color: rgba(255,255,255,0.5);
+      font-size: 11px; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; transition: all 0.15s;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .ge-tilt-btn:hover { color: #fff; background: rgba(56,189,248,0.3); }
+    #ge-tilt-track {
+      width: 50px; height: 4px; background: rgba(255,255,255,0.12);
+      border-radius: 2px; position: relative;
+    }
+    #ge-tilt-thumb {
+      width: 10px; height: 10px; background: #f59e0b; border-radius: 50%;
+      position: absolute; top: -3px; left: 50%;
+      transform: translateX(-50%); pointer-events: none;
+      box-shadow: 0 0 4px rgba(245,158,11,0.5);
+    }
+    #ge-tilt-label {
+      font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;
+      margin-right: 4px;
+    }
+
+    /* Loading indicator */
+    #loading {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(15,23,42,0.9); color: #38bdf8; padding: 20px 32px;
+      border-radius: 12px; font-size: 14px; z-index: 2000; display: none;
+    }
+    #loading .spinner { display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #38bdf8; border-top-color: transparent;
+      border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 10px; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Draw mode */
+    #drawPanel {
+      position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+      background: rgba(127, 29, 29, 0.92); backdrop-filter: blur(12px);
+      color: #fecaca; padding: 12px 20px; border-radius: 10px;
+      font-size: 13px; z-index: 1001; display: none; text-align: center;
+      border: 1px solid rgba(239,68,68,0.4);
+    }
+    #drawPanel b { color: #ef4444; }
+    #drawPanel button {
+      padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1); color: #fecaca; font-size: 12px;
+      cursor: pointer; margin: 0 4px;
+    }
+    #drawPanel button:hover { background: rgba(255,255,255,0.2); }
+    #coordsModal {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+      background: rgba(15,23,42,0.95); color: #e2e8f0; padding: 24px;
+      border-radius: 12px; z-index: 9999; display: none; max-width: 600px;
+      width: 90%; border: 1px solid rgba(56,189,248,0.3);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    #coordsModal h3 { color: #38bdf8; margin-bottom: 12px; }
+    #coordsModal textarea {
+      width: 100%; height: 200px; background: #1e293b; color: #22c55e;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+      padding: 12px; font-family: monospace; font-size: 12px; resize: vertical;
+    }
+    #coordsModal button {
+      margin-top: 10px; padding: 8px 16px; border-radius: 6px; border: none;
+      background: #38bdf8; color: #0f172a; font-weight: 600; cursor: pointer;
+    }
+    .label-spinner {
+      display: inline-block; width: 12px; height: 12px;
+      border: 2px solid rgba(56,189,248,0.3); border-top-color: #38bdf8;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      vertical-align: middle; margin-left: 6px;
+    }
+    .label-check { color: #22c55e; margin-left: 6px; font-size: 13px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+
+<div id="token-overlay" style="display:none">
+  <div class="card">
+    <h2>🌐 Porto de Santos — Gêmeo Digital 3D</h2>
+    <p>Visualização 3D fotorrealista do Porto de Santos</p>
+    <div class="field">
+      <label>Token de acesso ao mapa (<a href="https://ion.cesium.com/tokens" target="_blank">obter grátis</a>)</label>
+      <input type="text" id="cesiumTokenInput" placeholder="eyJhbGci..." />
+    </div>
+    <div class="field">
+      <label>Chave do mapa 3D (<a href="https://console.cloud.google.com/apis/credentials" target="_blank">obter</a>)</label>
+      <input type="text" id="googleKeyInput" placeholder="AIzaSy..." />
+    </div>
+    <div class="field">
+      <label>Chave de rastreamento marítimo — opcional (<a href="https://aisstream.io" target="_blank">obter grátis</a>)</label>
+      <input type="text" id="aisKeyInput" placeholder="Chave AIS (opcional)..." />
+    </div>
+    <p style="font-size:11px; color:#64748b;">
+      Todas as chaves são gratuitas.
+    </p>
+    <button onclick="initWithTokens()">Iniciar Mapa 3D Fotorrealista</button>
+  </div>
+</div>
+
+<div id="cesiumContainer"></div>
+
+<div id="drawPanel">
+  <b>MODO DESENHO</b> — Clique no mapa para adicionar pontos do traçado<br>
+  <span id="drawCount">0 pontos</span> |
+  <button onclick="undoDrawPoint()">Desfazer</button>
+  <button onclick="finishDraw()">Exportar JSON</button>
+  <button onclick="toggleDrawMode()">Cancelar</button>
+</div>
+
+<div id="coordsModal">
+  <h3>Coordenadas do Traçado</h3>
+  <p style="font-size:12px;color:#94a3b8;margin-bottom:8px;">Copie o JSON abaixo e envie para eu fixar no código:</p>
+  <textarea id="coordsOutput" readonly></textarea>
+  <button onclick="copyCoords()">Copiar</button>
+  <button onclick="document.getElementById('coordsModal').style.display='none'" style="background:#64748b;margin-left:8px">Fechar</button>
+</div>
+<div id="loading"><span class="spinner"></span>Carregando 3D Tiles fotorrealistas...</div>
+
+<div id="controls" style="display:none;">
+  <h1><i data-lucide="anchor" style="width:16px;height:16px;display:inline;vertical-align:middle;margin-right:4px"></i> Porto de Santos</h1>
+  <div class="subtitle">Gêmeo Digital 3D — Visualização Interativa</div>
+
+  <h2><i data-lucide="map-pin" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px"></i> Navegação</h2>
+  <div class="btn-group">
+    <button onclick="flyTo('porto')" class="active">Porto</button>
+    <button onclick="flyTo('tecon')">Tecon</button>
+    <button onclick="flyTo('btp')">BTP</button>
+    <button onclick="flyTo('alemoa')">Alemoa</button>
+    <button onclick="flyTo('canal')">Canal</button>
+    <button onclick="flyTo('tunel')">Túnel</button>
+    <button id="drawBtn" onclick="toggleDrawMode()">Desenhar</button>
+    <button onclick="flyTo('centro')">Centro</button>
+  </div>
+
+  <h2><i data-lucide="layers" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px"></i> Camadas</h2>
+  <div class="control-row"><label>Mapa 3D fotorrealista</label><input type="checkbox" id="toggle3DTiles" checked onchange="toggleLayer('tiles3d')"></div>
+  <div class="control-row"><label id="streetLabel">Nomes de ruas</label><input type="checkbox" id="toggleStreets" onchange="toggleLayer('streets')"></div>
+  <div class="control-row"><label id="tunnelLabel">Túnel Santos-Guarujá</label><input type="checkbox" id="toggleTunnel" onchange="toggleLayer('tunnel')"></div>
+  <div class="control-row"><label>Navios simulados</label><input type="checkbox" id="toggleShips" checked onchange="toggleLayer('ships')"></div>
+  <div class="control-row"><label>Navios AIS (tempo real)</label><input type="checkbox" id="toggleAIS" checked onchange="toggleLayer('ais')"></div>
+  <div class="control-row"><label>Labels dos navios</label><input type="checkbox" id="toggleLabels" checked onchange="toggleLayer('labels')"></div>
+
+  <h2><i data-lucide="sun" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px"></i> Iluminação</h2>
+  <div class="control-row">
+    <label>Hora do dia</label>
+    <input type="range" id="timeSlider" min="0" max="23" step="1" value="10" oninput="updateTime()">
+    <span class="value" id="timeValue">10:00</span>
+  </div>
+  <div class="control-row"><label>Sombras</label><input type="checkbox" id="toggleShadows" checked onchange="toggleLayer('shadows')"></div>
+
+  <h2><i data-lucide="ship" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px"></i> Navios</h2>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>Contêiner</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div>Graneleiro</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8b5cf6"></div>Petroleiro</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#22c55e"></div>Rebocador</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#06b6d4"></div>Prático</div>
+  </div>
+
+  <h2><i data-lucide="info" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px"></i> Sobre</h2>
+  <div style="font-size:11px; color:#64748b; line-height:1.5;">
+    Visualização 3D fotorrealista do Porto de Santos.<br>
+    Navios posicionados nos terminais reais.<br>
+    Dados de atracação em tempo real.
+  </div>
+</div>
+
+<div id="info-panel" style="display:none;">
+  <span>Gêmeo Digital</span> Porto de Santos |
+  Lat: <span id="lat">-23.93</span> Lon: <span id="lon">-46.32</span> | Alt: <span id="alt">—</span>m
+</div>
+
+<div id="ship-count" style="display:none;">
+  <i data-lucide="ship" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px"></i>
+  <span id="shipCountNum">0</span> simulados |
+  <span id="aisCountNum" style="color:#22c55e">0</span> AIS ao vivo
+  <span id="aisStatus" style="font-size:10px;color:#64748b;margin-left:6px"></span>
+</div>
+
+<!-- Google Earth-style navigation widget -->
+<div id="ge-nav">
+  <!-- Compass with rotation ring -->
+  <div id="ge-compass">
+    <div id="ge-compass-ring">
+      <span id="ge-compass-n">N</span>
+      <div id="ge-compass-arrow"></div>
+      <div id="ge-compass-center" title="Resetar Norte" onclick="resetNorth()"></div>
+      <!-- D-pad for orbit -->
+      <div id="ge-dpad">
+        <button class="ge-dpad-btn up"    onmousedown="startOrbit('up')"    onmouseup="stopOrbit()" onmouseleave="stopOrbit()" title="Orbitar para cima"><i data-lucide="chevron-up" style="width:14px;height:14px"></i></button>
+        <button class="ge-dpad-btn down"  onmousedown="startOrbit('down')"  onmouseup="stopOrbit()" onmouseleave="stopOrbit()" title="Orbitar para baixo"><i data-lucide="chevron-down" style="width:14px;height:14px"></i></button>
+        <button class="ge-dpad-btn left"  onmousedown="startOrbit('left')"  onmouseup="stopOrbit()" onmouseleave="stopOrbit()" title="Orbitar esquerda"><i data-lucide="chevron-left" style="width:14px;height:14px"></i></button>
+        <button class="ge-dpad-btn right" onmousedown="startOrbit('right')" onmouseup="stopOrbit()" onmouseleave="stopOrbit()" title="Orbitar direita"><i data-lucide="chevron-right" style="width:14px;height:14px"></i></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tilt control -->
+  <div id="ge-tilt">
+    <div id="ge-tilt-label">Tilt</div>
+    <button class="ge-tilt-btn" onmousedown="startTilt(1)"  onmouseup="stopTilt()" onmouseleave="stopTilt()" title="Vista aérea (top-down)"><i data-lucide="mountain" style="width:13px;height:13px"></i></button>
+    <div id="ge-tilt-track"><div id="ge-tilt-thumb"></div></div>
+    <button class="ge-tilt-btn" onmousedown="startTilt(-1)" onmouseup="stopTilt()" onmouseleave="stopTilt()" title="Vista ao nível do chão"><i data-lucide="eye" style="width:13px;height:13px"></i></button>
+    <button class="ge-tilt-btn" id="ge-autotilt-btn" onclick="toggleAutoTilt()" style="color:#22c55e;" title="Auto-tilt ATIVO"><i data-lucide="rotate-3d" style="width:13px;height:13px"></i></button>
+  </div>
+
+  <!-- Zoom control -->
+  <div id="ge-zoom">
+    <button class="ge-zoom-btn" onmousedown="startZoom(1)"  onmouseup="stopZoom()" onmouseleave="stopZoom()" title="Aproximar"><i data-lucide="plus" style="width:18px;height:18px"></i></button>
+    <div id="ge-zoom-track" onclick="zoomToLevel(event)"><div id="ge-zoom-thumb"></div></div>
+    <button class="ge-zoom-btn" onmousedown="startZoom(-1)" onmouseup="stopZoom()" onmouseleave="stopZoom()" title="Afastar"><i data-lucide="minus" style="width:18px;height:18px"></i></button>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  TOKENS
+// ============================================================
+const CESIUM_ION_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiIyYzJiYzhjZi1mMmQwLTRmZGUtOTMyNy00YzViOGQ4MTAxMWUiLCJpZCI6NDE2NjAxLCJpYXQiOjE3NzU4NTkwNzd9.vykOa5nH9MosBFdTAFJw46UOUa3Xu9rsc-ZxR4w7hlk';
+const GOOGLE_MAPS_API_KEY = 'AIzaSyA3CUKXPhnw3GO1Els18jP1kfyMJPo3GAY';
+const AIS_STREAM_API_KEY = '3db6471047fba91912f029e375b7157a9f494907';
+
+// ============================================================
+//  NAVIOS — coordenadas reais dos terminais
+// ============================================================
+// Navios simulados — TODOS nos waypoints CENTRAIS do canal (100% garantido na água)
+const SHIPS = [
+  // Todos usam os CANAL_WAYPOINTS ou pontos intermediários entre eles
+  // Canal Alemoa (waypoint 0)
+  { name: "EAGLE BRASILIA",     type: "tanker",    lat: -23.92406, lon: -46.31084, heading: 260, length: 275, beam: 48, draft: 15, status: "Atracado — Alemoa", terminal: "Alemoa" },
+  { name: "PETROBRAS 67",       type: "tanker",    lat: -23.92100, lon: -46.31400, heading: 80,  length: 330, beam: 60, draft: 21, status: "Atracado — Alemoa/DTCS", terminal: "Alemoa" },
+  // Canal frente DP World (waypoint 1)
+  { name: "COSCO UNIVERSE",     type: "container", lat: -23.93526, lon: -46.31084, heading: 270, length: 366, beam: 51, draft: 15, status: "Atracado — DP World", terminal: "DP World" },
+  // Canal frente BTP (entre waypoints 0 e 1)
+  { name: "CMA CGM JULES VERNE",type: "container", lat: -23.92000, lon: -46.35000, heading: 250, length: 396, beam: 54, draft: 16, status: "Atracado — BTP", terminal: "BTP" },
+  // Canal Paquetá (entre waypoints 1 e 2)
+  { name: "STAR POLARIS",       type: "bulk",      lat: -23.93900, lon: -46.30850, heading: 290, length: 200, beam: 30, draft: 11, status: "Atracado — Paquetá", terminal: "Paquetá" },
+  // Canal Outeirinhos (waypoint 2)
+  { name: "NORD MARS",          type: "bulk",      lat: -23.94302, lon: -46.30616, heading: 310, length: 230, beam: 32, draft: 12, status: "Atracado — Outeirinhos", terminal: "Outeirinhos" },
+  // Canal meio (waypoint 3) — rebocadores
+  { name: "SMIT SANTOS",        type: "tug",       lat: -23.95077, lon: -46.30241, heading: 110, length: 32,  beam: 12, draft: 5,  status: "Reboque ativo" },
+  { name: "SVITZER GUAIUBA",    type: "tug",       lat: -23.94700, lon: -46.30430, heading: 310, length: 30,  beam: 11, draft: 5,  status: "Apoio manobra" },
+  // Canal frente Tecon (waypoint 4) — porta-contêineres
+  { name: "MSC GULSUN",         type: "container", lat: -23.96111, lon: -46.29959, heading: 135, length: 400, beam: 61, draft: 16, status: "Atracado — Santos Brasil", terminal: "Santos Brasil" },
+  { name: "MAERSK EDINBURGH",   type: "container", lat: -23.95800, lon: -46.30100, heading: 315, length: 350, beam: 53, draft: 14, status: "Atracado — Santos Brasil", terminal: "Santos Brasil" },
+  // Canal na barra (waypoint 5) — navegando
+  { name: "EVER GIVEN",         type: "container", lat: -23.96714, lon: -46.29772, heading: 20,  length: 400, beam: 59, draft: 16, status: "Navegando — Entrada" },
+  { name: "VALE BRASIL",        type: "bulk",      lat: -23.96400, lon: -46.29600, heading: 200, length: 362, beam: 65, draft: 23, status: "Navegando — Saída" },
+  // Prático — canal na barra (mais ao sul)
+  { name: "LANCHA PRATICAGEM",  type: "pilot",     lat: -23.97500, lon: -46.29500, heading: 20,  length: 15,  beam: 5,  draft: 2,  status: "Aguardando navio" },
+];
+
+const SHIP_COLORS = {
+  container: '#ef4444', bulk: '#f59e0b', tanker: '#8b5cf6', tug: '#22c55e', pilot: '#06b6d4',
+};
+const SHIP_ICONS = {
+  container: '📦', bulk: '🏗️', tanker: '🛢️', tug: '🔗', pilot: '⚓',
+};
+
+// ============================================================
+//  GLOBALS
+// ============================================================
+let viewer, google3DTileset, shipEntities = [];
+let animTime = 0, shipSpeedMultiplier = 1, animationRunning = true;
+
+// ============================================================
+//  INIT
+// ============================================================
+function initWithTokens() {
+  const cesiumToken = document.getElementById('cesiumTokenInput').value.trim();
+  const googleKey = document.getElementById('googleKeyInput').value.trim();
+  const aisKey = document.getElementById('aisKeyInput').value.trim();
+  if (!cesiumToken) { alert('Token de acesso não configurado!'); return; }
+  if (!googleKey) { alert('Chave do mapa 3D não configurada!'); return; }
+
+  localStorage.setItem('cesiumToken', cesiumToken);
+  localStorage.setItem('googleMapsKey', googleKey);
+  if (aisKey) localStorage.setItem('aisStreamKey', aisKey);
+  document.getElementById('token-overlay').style.display = 'none';
+  document.getElementById('loading').style.display = 'block';
+  initMap(cesiumToken, googleKey, aisKey);
+}
+
+async function initMap(cesiumToken, googleKey, aisKey) {
+  Cesium.Ion.defaultAccessToken = cesiumToken;
+
+  viewer = new Cesium.Viewer('cesiumContainer', {
+    terrain: Cesium.Terrain.fromWorldTerrain(),
+    infoBox: true,
+    selectionIndicator: true,
+    shadows: true,
+    shouldAnimate: true,
+    animation: false,
+    timeline: false,
+    baseLayerPicker: false,
+    geocoder: false,
+    homeButton: false,
+    sceneModePicker: false,
+    navigationHelpButton: false,
+    fullscreenButton: false,
+  });
+
+  // Iluminação e atmosfera
+  viewer.scene.globe.enableLighting = true;
+  viewer.scene.globe.atmosphereLightIntensity = 20.0;
+
+  // Configurar hora do dia
+  updateTime();
+
+  // Carregar Google Photorealistic 3D Tiles
+  try {
+    google3DTileset = await Cesium.Cesium3DTileset.fromUrl(
+      `https://tile.googleapis.com/v1/3dtiles/root.json?key=${googleKey}`
+    );
+    viewer.scene.primitives.add(google3DTileset);
+
+    // Manter o globo visível para referência de terreno
+    // As 3D Tiles renderizam por cima
+    viewer.scene.globe.show = true;
+
+    console.log('✅ Google Photorealistic 3D Tiles carregados');
+  } catch (e) {
+    console.error('❌ Erro Google 3D Tiles:', e);
+    viewer.scene.globe.show = true;
+    alert('Erro ao carregar mapa 3D. Verifique sua conexão e chaves de acesso.\n\n' + e.message);
+  }
+
+  // Criar camadas de ruas (inicialmente ocultas)
+  createStreetLayers();
+
+  document.getElementById('loading').style.display = 'none';
+
+  // Criar marcadores de navios
+  createShipMarkers();
+
+  // Posicionar câmera instantaneamente em Santos (sem depender de flyTo)
+  viewer.camera.setView({
+    destination: Cesium.Cartesian3.fromDegrees(-46.3200, -23.9380, 4000),
+    orientation: { heading: Cesium.Math.toRadians(130), pitch: Cesium.Math.toRadians(-35), roll: 0 }
+  });
+
+  // Mostrar UI
+  document.getElementById('controls').style.display = 'block';
+  document.getElementById('info-panel').style.display = 'block';
+  document.getElementById('ship-count').style.display = 'block';
+  document.getElementById('ge-nav').style.display = 'flex';
+
+  // Re-renderizar ícones Lucide nos elementos recém-visíveis
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  // Iniciar AIS se key disponível + Lineup como fallback
+  const effectiveAisKey = aisKey || AIS_STREAM_API_KEY || localStorage.getItem('aisStreamKey');
+  if (effectiveAisKey) {
+    connectAIS(effectiveAisKey);
+    // Se após 15s não receber dados AIS, carregar Lineup como fallback
+    setTimeout(() => {
+      if (Object.keys(aisEntities).length === 0) {
+        console.log('⏳ AIS sem dados após 15s — carregando Lineup ANTAQ como fallback');
+        loadLineupData();
+      }
+    }, 15000);
+  } else {
+    // Sem AIS key — carregar Lineup direto
+    console.log('ℹ️ AIS não configurado — carregando dados Lineup ANTAQ');
+    loadLineupData();
+  }
+
+  // === FIX: Habilitar zoom com trackpad/pinch no Mac ===
+  // CesiumJS por padrão usa o scroll wheel. Vamos garantir que o pinch-to-zoom funcione.
+  viewer.scene.screenSpaceCameraController.enableZoom = true;
+  viewer.scene.screenSpaceCameraController.enableRotate = true;
+  viewer.scene.screenSpaceCameraController.enableTilt = true;
+  viewer.scene.screenSpaceCameraController.enableLook = true;
+  // Aumentar sensibilidade do zoom para trackpad
+  viewer.scene.screenSpaceCameraController.zoomEventTypes = [
+    Cesium.CameraEventType.WHEEL,
+    Cesium.CameraEventType.PINCH,
+  ];
+  // Tilt com dois dedos
+  viewer.scene.screenSpaceCameraController.tiltEventTypes = [
+    Cesium.CameraEventType.MIDDLE_DRAG,
+    Cesium.CameraEventType.PINCH,
+    { eventType: Cesium.CameraEventType.LEFT_DRAG, modifier: Cesium.KeyboardEventModifier.CTRL },
+    { eventType: Cesium.CameraEventType.RIGHT_DRAG },
+  ];
+  // Rotação com dois dedos + shift, ou click direito
+  viewer.scene.screenSpaceCameraController.rotateEventTypes = [
+    Cesium.CameraEventType.LEFT_DRAG,
+  ];
+
+  // Atualizar indicadores e auto-tilt continuamente
+  viewer.scene.postRender.addEventListener(() => {
+    updateCompass();
+    updateTiltIndicator();
+    updateZoomIndicator();
+    applyAutoTilt();
+    // Atualizar indicador visual do auto-tilt
+    const autoBtn = document.getElementById('ge-autotilt-btn');
+    if (autoBtn) {
+      autoBtn.style.color = _autoTiltEnabled ? '#22c55e' : '#64748b';
+      autoBtn.title = _autoTiltEnabled ? 'Auto-tilt ATIVO (clique para desativar)' : 'Auto-tilt INATIVO (clique para reativar)';
+    }
+  });
+
+  // Atalhos de teclado
+  document.addEventListener('keydown', handleKeyNav);
+
+  // Mouse tracking
+  const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+  handler.setInputAction(function(movement) {
+    const ray = viewer.camera.getPickRay(movement.endPosition);
+    const cartesian = viewer.scene.globe.show
+      ? viewer.scene.globe.pick(ray, viewer.scene)
+      : viewer.camera.pickEllipsoid(movement.endPosition);
+    if (cartesian) {
+      const c = Cesium.Cartographic.fromCartesian(cartesian);
+      document.getElementById('lat').textContent = Cesium.Math.toDegrees(c.latitude).toFixed(4);
+      document.getElementById('lon').textContent = Cesium.Math.toDegrees(c.longitude).toFixed(4);
+    }
+    document.getElementById('alt').textContent = Math.round(viewer.camera.positionCartographic.height);
+  }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+  // Animação de navios em movimento
+  viewer.clock.onTick.addEventListener(animateShips);
+}
+
+// ============================================================
+//  STREET LABELS LAYER (CARTO + Stamen transparent tiles)
+// ============================================================
+// ============================================================
+//  STREET LABELS — OSM via Overpass API → CesiumJS entities
+// ============================================================
+let streetEntities = [];
+let streetsLoaded = false;
+
+function createStreetLayers() {
+  // Não pré-carrega — só carrega quando o usuário ativar o checkbox
+}
+
+function setStreetStatus(status) {
+  const label = document.getElementById('streetLabel');
+  if (!label) return;
+  switch (status) {
+    case 'loading':
+      label.innerHTML = 'Nomes de ruas <span class="label-spinner"></span>';
+      break;
+    case 'partial':
+      label.innerHTML = 'Nomes de ruas <span class="label-spinner"></span>';
+      break;
+    case 'done':
+      label.innerHTML = 'Nomes de ruas <span class="label-check">✓</span>';
+      setTimeout(() => { label.textContent = 'Nomes de ruas'; }, 3000);
+      break;
+    case 'error':
+      label.innerHTML = 'Nomes de ruas <span style="color:#ef4444;margin-left:6px;font-size:11px">✗</span>';
+      break;
+    default:
+      label.textContent = 'Nomes de ruas';
+  }
+}
+
+async function loadStreetData() {
+  if (streetsLoaded) return;
+  console.log('🛣️ Carregando ruas principais...');
+
+  const bbox = '-23.98,-46.37,-23.91,-46.28'; // S,W,N,E
+
+  // Fase 1: Carregar só vias principais (rápido, ~200-500 vias)
+  const mainQuery = `
+    [out:json][timeout:20];
+    (
+      way["highway"~"^(motorway|trunk|primary|secondary|tertiary)$"]["name"](${bbox});
+    );
+    out body;
+    >;
+    out skel qt;
+  `;
+
+  try {
+    const resp = await fetch('https://overpass-api.de/api/interpreter', {
+      method: 'POST',
+      body: `data=${encodeURIComponent(mainQuery)}`,
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    const data = await resp.json();
+    processStreetData(data, true);
+    streetsLoaded = true;
+    setStreetStatus('done');
+  } catch (e) {
+    console.error('❌ Erro ao carregar ruas:', e);
+    setStreetStatus('error');
+  }
+}
+
+
+function processStreetData(data, showImmediately = false) {
+  const nodes = {};
+  data.elements.filter(e => e.type === 'node').forEach(n => { nodes[n.id] = n; });
+
+  const ways = data.elements.filter(e => e.type === 'way' && e.tags?.name);
+
+  // Agrupar por nome (evitar labels duplicados)
+  const roadsByName = {};
+  ways.forEach(w => {
+    const name = w.tags.name;
+    if (!roadsByName[name]) roadsByName[name] = [];
+    roadsByName[name].push(w);
+  });
+
+  const roadConfig = {
+    motorway:     { color: '#f59e0b', width: 10, labelFont: 'bold 14px sans-serif', viewDist: 15000 },
+    trunk:        { color: '#f59e0b', width: 9,  labelFont: 'bold 14px sans-serif', viewDist: 15000 },
+    primary:      { color: '#ef4444', width: 8,  labelFont: 'bold 13px sans-serif', viewDist: 12000 },
+    secondary:    { color: '#3b82f6', width: 6,  labelFont: 'bold 12px sans-serif', viewDist: 10000 },
+    tertiary:     { color: '#22c55e', width: 5,  labelFont: '12px sans-serif',      viewDist: 7000  },
+    residential:  { color: '#e2e8f0', width: 3,  labelFont: '11px sans-serif',      viewDist: 4000  },
+    unclassified: { color: '#cbd5e1', width: 3,  labelFont: '11px sans-serif',      viewDist: 4000  },
+    service:      { color: '#94a3b8', width: 2,  labelFont: '10px sans-serif',      viewDist: 2500  },
+    living_street:{ color: '#cbd5e1', width: 3,  labelFont: '11px sans-serif',      viewDist: 3000  },
+  };
+  const defaultConfig = { color: '#94a3b8', width: 3, labelFont: '11px sans-serif', viewDist: 4000 };
+
+  let count = 0;
+  for (const [name, roadWays] of Object.entries(roadsByName)) {
+    const firstWay = roadWays[0];
+    const highway = firstWay.tags.highway || 'residential';
+    const cfg = roadConfig[highway] || defaultConfig;
+
+    roadWays.forEach(way => {
+      const coords = way.nodes
+        .map(nid => nodes[nid])
+        .filter(n => n)
+        .flatMap(n => [n.lon, n.lat]);
+
+      if (coords.length < 4) return;
+
+      const entity = viewer.entities.add({
+        polyline: {
+          positions: Cesium.Cartesian3.fromDegreesArray(coords),
+          width: cfg.width,
+          material: Cesium.Color.fromCssColorString(cfg.color).withAlpha(0.9),
+          clampToGround: true,
+          classificationType: Cesium.ClassificationType.BOTH,
+        },
+        show: showImmediately,
+      });
+      streetEntities.push(entity);
+    });
+
+    // Label no ponto médio
+    const midIdx = Math.floor(firstWay.nodes.length / 2);
+    const midNode = nodes[firstWay.nodes[midIdx]];
+    if (midNode) {
+      const labelEntity = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(midNode.lon, midNode.lat, 20),
+        label: {
+          text: name.toUpperCase(),
+          font: cfg.labelFont,
+          fillColor: Cesium.Color.WHITE,
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 4,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+          distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, cfg.viewDist),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          showBackground: true,
+          backgroundColor: Cesium.Color.fromCssColorString('rgba(15, 23, 42, 0.75)'),
+          backgroundPadding: new Cesium.Cartesian2(6, 4),
+          scale: 1.0,
+        },
+        show: showImmediately,
+      });
+      streetEntities.push(labelEntity);
+      count++;
+    }
+  }
+
+  console.log(`🛣️ +${count} ruas (${ways.length} segmentos) — total: ${streetEntities.length} entidades`);
+}
+
+function toggleStreetMode(enabled) {
+  if (enabled && !streetsLoaded && streetEntities.length === 0) {
+    // Primeiro uso — mostrar spinner e carregar
+    setStreetStatus('loading');
+    loadStreetData().then(() => {
+      streetEntities.forEach(e => { e.show = true; });
+    });
+  } else {
+    streetEntities.forEach(e => { e.show = enabled; });
+    if (!enabled) setStreetStatus('idle');
+  }
+}
+
+// ============================================================
+//  SHIP MARKERS (simple colored points + labels)
+// ============================================================
+function createShipMarkers() {
+  shipEntities = [];
+
+  SHIPS.forEach((ship, i) => {
+    const color = Cesium.Color.fromCssColorString(SHIP_COLORS[ship.type] || '#ffffff');
+    const icon = SHIP_ICONS[ship.type] || '🚢';
+    const waterHeight = 3;
+
+    const entity = viewer.entities.add({
+      name: ship.name,
+      position: Cesium.Cartesian3.fromDegrees(ship.lon, ship.lat, waterHeight),
+
+      // Ponto colorido
+      point: {
+        pixelSize: Math.max(10, Math.min(20, ship.length / 25)),
+        color: color,
+        outlineColor: Cesium.Color.WHITE,
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        heightReference: Cesium.HeightReference.NONE,
+      },
+
+      // Label
+      label: {
+        text: `${icon} ${ship.name}`,
+        font: 'bold 12px sans-serif',
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 3,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -14),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 15000),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString('rgba(15,23,42,0.7)'),
+        backgroundPadding: new Cesium.Cartesian2(6, 4),
+      },
+
+      // Info popup
+      description: `
+        <div style="font-family:system-ui;padding:8px;">
+          <h3 style="margin:0 0 8px;color:${SHIP_COLORS[ship.type]}">${icon} ${ship.name}</h3>
+          <table style="width:100%;font-size:13px;border-collapse:collapse;">
+            <tr><td style="padding:4px 8px;color:#666"><b>Tipo</b></td><td style="padding:4px 8px">${ship.type.toUpperCase()}</td></tr>
+            <tr><td style="padding:4px 8px;color:#666"><b>Comprimento</b></td><td style="padding:4px 8px">${ship.length}m</td></tr>
+            <tr><td style="padding:4px 8px;color:#666"><b>Boca</b></td><td style="padding:4px 8px">${ship.beam}m</td></tr>
+            <tr><td style="padding:4px 8px;color:#666"><b>Calado</b></td><td style="padding:4px 8px">${ship.draft}m</td></tr>
+            <tr><td style="padding:4px 8px;color:#666"><b>Proa</b></td><td style="padding:4px 8px">${ship.heading}°</td></tr>
+            <tr><td style="padding:4px 8px;color:#666"><b>Status</b></td><td style="padding:4px 8px">${ship.status}</td></tr>
+            ${ship.terminal ? `<tr><td style="padding:4px 8px;color:#666"><b>Terminal</b></td><td style="padding:4px 8px">${ship.terminal}</td></tr>` : ''}
+          </table>
+        </div>
+      `,
+
+      properties: { shipIndex: i, moving: ship.moving || false },
+    });
+
+    shipEntities.push(entity);
+  });
+
+  document.getElementById('shipCountNum').textContent = SHIPS.length;
+}
+
+// ============================================================
+//  ANIMATE SHIPS
+// ============================================================
+function animateShips() {
+  if (!animationRunning) return;
+  animTime += 0.016 * shipSpeedMultiplier;
+
+  shipEntities.forEach((entity, i) => {
+    const ship = SHIPS[i];
+    if (!ship.moving) return;
+
+    const headRad = Cesium.Math.toRadians(ship.heading);
+    const progress = Math.sin(animTime * 0.3) * 0.003;
+    const newLat = ship.lat + progress * Math.cos(headRad);
+    const newLon = ship.lon + progress * Math.sin(headRad);
+
+    entity.position = Cesium.Cartesian3.fromDegrees(newLon, newLat, 3);
+  });
+}
+
+// ============================================================
+//  FLY TO
+// ============================================================
+function flyTo(location) {
+  document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
+  event?.target?.classList.add('active');
+
+  const views = {
+    porto:  { dest: [-46.3200, -23.9380, 4000], heading: 130, pitch: -35 },
+    tecon:  { dest: [-46.2920, -23.9610, 500],  heading: 315, pitch: -25 },
+    btp:    { dest: [-46.3510, -23.9190, 500],   heading: 170, pitch: -25 },
+    alemoa: { dest: [-46.3680, -23.9170, 500],   heading: 160, pitch: -25 },
+    canal:  { dest: [-46.2910, -23.9750, 800],   heading: 340, pitch: -20 },
+    tunel:  { dest: [-46.3074, -23.9615, 1507],   heading: 320, pitch: -25 },
+    centro: { dest: [-46.3282, -23.9607, 1000],  heading: 0,   pitch: -35 },
+  };
+
+  const v = views[location];
+  if (v) {
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(...v.dest),
+      orientation: { heading: Cesium.Math.toRadians(v.heading), pitch: Cesium.Math.toRadians(v.pitch), roll: 0 },
+      duration: 2.5,
+    });
+  }
+}
+
+// ============================================================
+//  CONTROLS
+// ============================================================
+function toggleLayer(layer) {
+  switch (layer) {
+    case 'tiles3d':
+      if (google3DTileset) google3DTileset.show = document.getElementById('toggle3DTiles').checked;
+      break;
+    case 'streets':
+      toggleStreetMode(document.getElementById('toggleStreets').checked);
+      break;
+    case 'tunnel':
+      toggleTunnel(document.getElementById('toggleTunnel').checked);
+      break;
+    case 'ships':
+      const show = document.getElementById('toggleShips').checked;
+      shipEntities.forEach(e => { e.show = show; });
+      animationRunning = show;
+      break;
+    case 'ais':
+      const showAIS = document.getElementById('toggleAIS').checked;
+      Object.values(aisEntities).forEach(e => { e.show = showAIS; });
+      lineupEntities.forEach(e => { e.show = showAIS; });
+      break;
+    case 'labels':
+      const showLabels = document.getElementById('toggleLabels').checked;
+      shipEntities.forEach(e => { if (e.label) e.label.show = showLabels; });
+      break;
+    case 'shadows':
+      viewer.shadows = document.getElementById('toggleShadows').checked;
+      break;
+  }
+}
+
+function updateTime() {
+  const hour = parseInt(document.getElementById('timeSlider').value);
+  document.getElementById('timeValue').textContent = `${hour.toString().padStart(2, '0')}:00`;
+  const now = new Date();
+  now.setHours(hour, 0, 0, 0);
+  if (viewer) {
+    viewer.clock.currentTime = Cesium.JulianDate.fromDate(now);
+    viewer.clock.shouldAnimate = false;
+  }
+}
+
+// ============================================================
+//  GOOGLE EARTH-STYLE NAVIGATION
+// ============================================================
+let _orbitInterval = null, _tiltInterval = null, _zoomInterval = null;
+
+// --- Auto-tilt: inclina automaticamente baseado na altitude ---
+// Quando o usuário usa o controle manual de tilt, desativa o auto-tilt
+let _autoTiltEnabled = true;
+let _lastAutoTiltHeight = null;
+
+// Calcula o pitch ideal baseado na altitude
+// Acima de 2000m: -90° (top-down)
+// Abaixo de 100m: -15° (quase horizonte)
+// Transição suave entre os dois
+function getAutoTiltPitch(height) {
+  const HIGH = 2000;  // acima disso = top-down
+  const LOW = 100;    // abaixo disso = máxima inclinação
+  const PITCH_TOP = -90; // graus
+  const PITCH_LOW = -15; // graus
+
+  if (height >= HIGH) return Cesium.Math.toRadians(PITCH_TOP);
+  if (height <= LOW) return Cesium.Math.toRadians(PITCH_LOW);
+
+  // Interpolação suave (ease-in-out) entre LOW e HIGH
+  const t = (height - LOW) / (HIGH - LOW); // 0 (perto) a 1 (longe)
+  const eased = t * t * (3 - 2 * t); // smoothstep
+  const pitchDeg = PITCH_LOW + (PITCH_TOP - PITCH_LOW) * eased;
+  return Cesium.Math.toRadians(pitchDeg);
+}
+
+function applyAutoTilt() {
+  if (!_autoTiltEnabled || !viewer) return;
+
+  const height = viewer.camera.positionCartographic.height;
+
+  // Só aplicar se a altitude mudou significativamente (evitar jitter)
+  if (_lastAutoTiltHeight !== null && Math.abs(height - _lastAutoTiltHeight) < 5) return;
+  _lastAutoTiltHeight = height;
+
+  const targetPitch = getAutoTiltPitch(height);
+  const currentPitch = viewer.camera.pitch;
+
+  // Suavizar a transição (lerp 10% por frame)
+  const diff = targetPitch - currentPitch;
+  if (Math.abs(diff) < Cesium.Math.toRadians(0.5)) return; // Já perto o bastante
+
+  const newPitch = currentPitch + diff * 0.1;
+
+  // Aplicar sem mover a posição
+  const center = pickCenterPoint();
+  if (!center) return;
+
+  const transform = Cesium.Transforms.eastNorthUpToFixedFrame(center, viewer.scene.globe.ellipsoid);
+  const dist = Cesium.Cartesian3.distance(viewer.camera.position, center);
+
+  viewer.camera.lookAtTransform(transform, new Cesium.HeadingPitchRange(
+    viewer.camera.heading, newPitch, dist));
+  viewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+}
+
+// --- Orbit: rotate camera around the look-at point ---
+function startOrbit(dir) {
+  stopOrbit();
+  doOrbit(dir);
+  _orbitInterval = setInterval(() => doOrbit(dir), 30);
+}
+function stopOrbit() { clearInterval(_orbitInterval); _orbitInterval = null; }
+
+function doOrbit(dir) {
+  const camera = viewer.camera;
+  const ellipsoid = viewer.scene.globe.ellipsoid;
+  // Get the point the camera is looking at
+  const center = pickCenterPoint();
+  if (!center) return;
+
+  const transform = Cesium.Transforms.eastNorthUpToFixedFrame(center, ellipsoid);
+  const angle = Cesium.Math.toRadians(1.5);
+
+  switch (dir) {
+    case 'left':
+      camera.lookAtTransform(transform, new Cesium.HeadingPitchRange(
+        camera.heading - angle, camera.pitch, Cesium.Cartesian3.distance(camera.position, center)));
+      break;
+    case 'right':
+      camera.lookAtTransform(transform, new Cesium.HeadingPitchRange(
+        camera.heading + angle, camera.pitch, Cesium.Cartesian3.distance(camera.position, center)));
+      break;
+    case 'up':
+      _autoTiltEnabled = false; // Usuário mudou pitch manualmente
+      const newPitchUp = Math.min(camera.pitch + angle, Cesium.Math.toRadians(-5));
+      camera.lookAtTransform(transform, new Cesium.HeadingPitchRange(
+        camera.heading, newPitchUp, Cesium.Cartesian3.distance(camera.position, center)));
+      break;
+    case 'down':
+      _autoTiltEnabled = false; // Usuário mudou pitch manualmente
+      const newPitchDown = Math.max(camera.pitch - angle, Cesium.Math.toRadians(-89));
+      camera.lookAtTransform(transform, new Cesium.HeadingPitchRange(
+        camera.heading, newPitchDown, Cesium.Cartesian3.distance(camera.position, center)));
+      break;
+  }
+  // Reset transform so camera moves freely again
+  camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+}
+
+// --- Tilt: change pitch around the look-at point ---
+function startTilt(dir) {
+  _autoTiltEnabled = false; // Usuário assumiu controle manual
+  stopTilt();
+  doTilt(dir);
+  _tiltInterval = setInterval(() => doTilt(dir), 30);
+}
+function stopTilt() { clearInterval(_tiltInterval); _tiltInterval = null; }
+
+function doTilt(dir) {
+  // dir=1 means toward top-down (pitch closer to -90), dir=-1 toward horizon
+  const camera = viewer.camera;
+  const center = pickCenterPoint();
+  if (!center) return;
+
+  const transform = Cesium.Transforms.eastNorthUpToFixedFrame(center, viewer.scene.globe.ellipsoid);
+  const angle = Cesium.Math.toRadians(1.5) * dir;
+  const newPitch = Math.max(Math.min(camera.pitch - angle, Cesium.Math.toRadians(-5)), Cesium.Math.toRadians(-89));
+
+  camera.lookAtTransform(transform, new Cesium.HeadingPitchRange(
+    camera.heading, newPitch, Cesium.Cartesian3.distance(camera.position, center)));
+  camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+  updateTiltIndicator();
+}
+
+// --- Zoom: move camera closer/further ---
+function startZoom(dir) {
+  stopZoom();
+  doZoom(dir);
+  _zoomInterval = setInterval(() => doZoom(dir), 30);
+}
+function stopZoom() { clearInterval(_zoomInterval); _zoomInterval = null; }
+
+function doZoom(dir) {
+  const height = viewer.camera.positionCartographic.height;
+  const amount = Math.max(10, height * 0.06) * dir;
+  viewer.camera.zoomIn(amount);
+  updateZoomIndicator();
+}
+
+function zoomToLevel(event) {
+  const track = document.getElementById('ge-zoom-track');
+  const rect = track.getBoundingClientRect();
+  const ratio = (event.clientY - rect.top) / rect.height; // 0=top(close), 1=bottom(far)
+  const targetHeight = 50 + ratio * 50000; // 50m to 50km
+  const cart = viewer.camera.positionCartographic;
+  viewer.camera.flyTo({
+    destination: Cesium.Cartesian3.fromRadians(cart.longitude, cart.latitude, targetHeight),
+    orientation: { heading: viewer.camera.heading, pitch: viewer.camera.pitch, roll: 0 },
+    duration: 1,
+  });
+}
+
+// --- Reset north ---
+function resetNorth() {
+  const camera = viewer.camera;
+  const center = pickCenterPoint();
+  if (!center) return;
+
+  const transform = Cesium.Transforms.eastNorthUpToFixedFrame(center, viewer.scene.globe.ellipsoid);
+  const dist = Cesium.Cartesian3.distance(camera.position, center);
+
+  viewer.camera.flyTo({
+    destination: camera.position,
+    orientation: { heading: 0, pitch: camera.pitch, roll: 0 },
+    duration: 0.8,
+  });
+}
+
+// --- Pick the point camera is looking at ---
+function pickCenterPoint() {
+  const ray = viewer.camera.getPickRay(new Cesium.Cartesian2(
+    viewer.canvas.clientWidth / 2, viewer.canvas.clientHeight / 2));
+  // Try picking the 3D tileset or globe
+  const picked = viewer.scene.pickFromRay(ray);
+  if (picked && picked.position) return picked.position;
+  // Fallback: pick the ellipsoid
+  return viewer.camera.pickEllipsoid(
+    new Cesium.Cartesian2(viewer.canvas.clientWidth / 2, viewer.canvas.clientHeight / 2));
+}
+
+// --- Update visual indicators ---
+function updateCompass() {
+  const heading = Cesium.Math.toDegrees(viewer.camera.heading);
+  const ring = document.getElementById('ge-compass-ring');
+  if (ring) ring.style.transform = `rotate(${-heading}deg)`;
+}
+
+function updateTiltIndicator() {
+  const pitch = viewer.camera.pitch;
+  // pitch: -90 (top-down) to -5 (near horizon). Map to 0% (left=top-down) to 100% (right=horizon)
+  const ratio = 1 - (Math.abs(pitch) - Cesium.Math.toRadians(5)) / Cesium.Math.toRadians(84);
+  const thumb = document.getElementById('ge-tilt-thumb');
+  if (thumb) thumb.style.left = `${Math.max(0, Math.min(100, ratio * 100))}%`;
+}
+
+function updateZoomIndicator() {
+  const height = viewer.camera.positionCartographic.height;
+  // Map height: 50m (top) to 50000m (bottom)
+  const ratio = Math.max(0, Math.min(1, (height - 50) / 49950));
+  const thumb = document.getElementById('ge-zoom-thumb');
+  if (thumb) thumb.style.top = `${ratio * 100}%`;
+}
+
+// --- Toggle auto-tilt ---
+function toggleAutoTilt() {
+  _autoTiltEnabled = !_autoTiltEnabled;
+  _lastAutoTiltHeight = null; // Reset para aplicar imediatamente
+}
+
+// --- Keyboard shortcuts ---
+function handleKeyNav(e) {
+  if (e.target.tagName === 'INPUT') return;
+  switch (e.key) {
+    case '+': case '=': doZoom(1); break;
+    case '-': doZoom(-1); break;
+    case 'ArrowLeft': e.preventDefault(); doOrbit('left'); break;
+    case 'ArrowRight': e.preventDefault(); doOrbit('right'); break;
+    case 'ArrowUp': e.preventDefault(); doOrbit('up'); break;
+    case 'ArrowDown': e.preventDefault(); doOrbit('down'); break;
+    case 'r': case 'R': resetNorth(); break;
+  }
+}
+
+// ============================================================
+//  AIS REAL-TIME — aisstream.io WebSocket
+// ============================================================
+let aisSocket = null;
+let aisEntities = {};       // Keyed by MMSI
+let aisShipData = {};       // Static data cache keyed by MMSI
+let aisReconnectTimer = null;
+// Bounding box amplo: toda costa SP + litoral (Santos, Guarujá, São Vicente, approach)
+const AIS_SANTOS_BBOX = [[-24.20, -46.60], [-23.70, -46.10]];
+
+// Códigos de tipo AIS → tipo legível
+const AIS_SHIP_TYPES = {
+  30: 'Pesca', 31: 'Reboque', 32: 'Reboque', 33: 'Dragagem', 34: 'Mergulho',
+  35: 'Militar', 36: 'Veleiro', 37: 'Recreação', 40: 'HSC', 50: 'Prático',
+  51: 'SAR', 52: 'Rebocador', 53: 'Porto', 54: 'Antipoluição',
+  60: 'Passageiro', 61: 'Passageiro', 62: 'Passageiro', 63: 'Passageiro', 69: 'Passageiro',
+  70: 'Carga', 71: 'Carga', 72: 'Carga', 73: 'Carga', 79: 'Carga',
+  80: 'Petroleiro', 81: 'Petroleiro', 82: 'Petroleiro', 83: 'Petroleiro', 89: 'Petroleiro',
+};
+
+function getAISColor(typeCode) {
+  if (typeCode >= 70 && typeCode < 80) return '#ef4444';   // Carga → vermelho
+  if (typeCode >= 80 && typeCode < 90) return '#8b5cf6';   // Petroleiro → roxo
+  if (typeCode >= 60 && typeCode < 70) return '#3b82f6';   // Passageiro → azul
+  if (typeCode === 31 || typeCode === 32 || typeCode === 52) return '#22c55e'; // Rebocador → verde
+  if (typeCode === 50) return '#06b6d4';                    // Prático → ciano
+  if (typeCode === 30) return '#f59e0b';                    // Pesca → amarelo
+  return '#94a3b8'; // Default cinza
+}
+
+function getAISNavStatus(code) {
+  const statuses = {
+    0: 'Em navegação', 1: 'Fundeado', 2: 'Sem comando', 3: 'Manobrabilidade restrita',
+    4: 'Restrito por calado', 5: 'Atracado', 6: 'Encalhado', 7: 'Pesca',
+    8: 'Em navegação à vela', 14: 'AIS-SART', 15: 'Não definido'
+  };
+  return statuses[code] || `Status ${code}`;
+}
+
+function connectAIS(apiKey) {
+  if (aisSocket && aisSocket.readyState === WebSocket.OPEN) return;
+
+  updateAISStatus('Conectando...');
+  console.log('🔌 Conectando ao AIS Stream...');
+
+  aisSocket = new WebSocket('wss://stream.aisstream.io/v0/stream');
+
+  aisSocket.onopen = function() {
+    console.log('✅ WebSocket AIS conectado');
+    updateAISStatus('Conectado');
+
+    // Enviar subscription dentro de 3s (requisito da API)
+    const subscription = {
+      APIKey: apiKey,
+      BoundingBoxes: [AIS_SANTOS_BBOX],
+      FilterMessageTypes: ['PositionReport', 'ShipStaticData']
+    };
+    aisSocket.send(JSON.stringify(subscription));
+    console.log('📡 Subscription enviada para Porto de Santos');
+  };
+
+  aisSocket.onmessage = function(event) {
+    try {
+      const msg = JSON.parse(event.data);
+      handleAISMessage(msg);
+    } catch (e) {
+      console.warn('AIS parse error:', e);
+    }
+  };
+
+  aisSocket.onerror = function(err) {
+    console.error('❌ AIS WebSocket error:', err);
+    updateAISStatus('Erro');
+  };
+
+  aisSocket.onclose = function(event) {
+    console.log(`🔌 AIS desconectado (code=${event.code})`);
+    updateAISStatus('Desconectado');
+    // Reconectar após 10s
+    aisReconnectTimer = setTimeout(() => connectAIS(apiKey), 10000);
+  };
+}
+
+function handleAISMessage(msg) {
+  const meta = msg.MetaData;
+  const mmsi = String(meta.MMSI);
+  console.log(`📡 AIS [${msg.MessageType}] MMSI:${mmsi} ${meta.ShipName || ''} lat:${meta.latitude} lon:${meta.longitude}`);
+
+  if (msg.MessageType === 'ShipStaticData') {
+    const sd = msg.Message.ShipStaticData;
+    aisShipData[mmsi] = {
+      name: sd.Name?.trim() || meta.ShipName?.trim() || `MMSI ${mmsi}`,
+      type: sd.Type || 0,
+      typeName: AIS_SHIP_TYPES[sd.Type] || 'Desconhecido',
+      imo: sd.ImoNumber || 0,
+      callSign: sd.CallSign?.trim() || '',
+      destination: sd.Destination?.trim() || '',
+      draught: sd.MaximumStaticDraught || 0,
+      dimA: sd.Dimension?.A || 0,
+      dimB: sd.Dimension?.B || 0,
+      dimC: sd.Dimension?.C || 0,
+      dimD: sd.Dimension?.D || 0,
+    };
+    // Calcular comprimento e boca
+    const d = aisShipData[mmsi];
+    d.length = d.dimA + d.dimB;
+    d.beam = d.dimC + d.dimD;
+    return;
+  }
+
+  if (msg.MessageType === 'PositionReport') {
+    const pos = msg.Message.PositionReport;
+    const lat = pos.Latitude;
+    const lon = pos.Longitude;
+    const heading = pos.TrueHeading === 511 ? pos.Cog : pos.TrueHeading;
+    const sog = pos.Sog;
+    const navStatus = pos.NavigationalStatus;
+    const shipName = meta.ShipName?.trim() || aisShipData[mmsi]?.name || `MMSI ${mmsi}`;
+    const shipType = aisShipData[mmsi]?.type || 0;
+    const color = getAISColor(shipType);
+
+    // Ignorar posições inválidas
+    if (lat === 0 && lon === 0) return;
+    if (lat < -25 || lat > -23 || lon < -47 || lon > -45) return;
+
+    updateAISEntity(mmsi, {
+      lat, lon, heading, sog, navStatus, shipName, shipType, color,
+      timestamp: meta.time_utc,
+    });
+  }
+}
+
+function updateAISEntity(mmsi, data) {
+  const showAIS = document.getElementById('toggleAIS')?.checked !== false;
+  const showLabels = document.getElementById('toggleLabels')?.checked !== false;
+  const waterHeight = 2;
+
+  if (aisEntities[mmsi]) {
+    // Atualizar entidade existente
+    const entity = aisEntities[mmsi];
+    entity.position = Cesium.Cartesian3.fromDegrees(data.lon, data.lat, waterHeight);
+    if (entity.label) {
+      entity.label.text = `${data.shipName}`;
+    }
+  } else {
+    // Criar nova entidade
+    const sd = aisShipData[mmsi] || {};
+    const typeName = sd.typeName || AIS_SHIP_TYPES[data.shipType] || '';
+    const pointSize = Math.max(8, Math.min(16, (sd.length || 100) / 20));
+
+    const entity = viewer.entities.add({
+      name: `[AIS] ${data.shipName}`,
+      position: Cesium.Cartesian3.fromDegrees(data.lon, data.lat, waterHeight),
+      show: showAIS,
+
+      point: {
+        pixelSize: pointSize,
+        color: Cesium.Color.fromCssColorString(data.color),
+        outlineColor: Cesium.Color.fromCssColorString('#22c55e'),
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+
+      label: {
+        text: data.shipName,
+        font: '11px sans-serif',
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -12),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 12000),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString('rgba(5,46,22,0.7)'),
+        backgroundPadding: new Cesium.Cartesian2(5, 3),
+        show: showLabels,
+      },
+
+      description: buildAISDescription(mmsi, data),
+    });
+
+    aisEntities[mmsi] = entity;
+    updateAISCount();
+  }
+
+  // Atualizar description com dados mais recentes
+  aisEntities[mmsi].description = buildAISDescription(mmsi, data);
+}
+
+function buildAISDescription(mmsi, data) {
+  const sd = aisShipData[mmsi] || {};
+  const typeName = sd.typeName || AIS_SHIP_TYPES[data.shipType] || 'Desconhecido';
+  const navStatusText = getAISNavStatus(data.navStatus);
+
+  return `
+    <div style="font-family:system-ui;padding:8px;">
+      <h3 style="margin:0 0 8px;color:${data.color}">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#22c55e;margin-right:6px;vertical-align:middle;"></span>
+        ${data.shipName} <span style="font-size:11px;color:#888">[AIS LIVE]</span>
+      </h3>
+      <table style="width:100%;font-size:13px;border-collapse:collapse;">
+        <tr><td style="padding:3px 8px;color:#666"><b>MMSI</b></td><td style="padding:3px 8px">${mmsi}</td></tr>
+        ${sd.imo ? `<tr><td style="padding:3px 8px;color:#666"><b>IMO</b></td><td style="padding:3px 8px">${sd.imo}</td></tr>` : ''}
+        <tr><td style="padding:3px 8px;color:#666"><b>Tipo</b></td><td style="padding:3px 8px;color:${data.color}">${typeName} (${data.shipType})</td></tr>
+        ${sd.length ? `<tr><td style="padding:3px 8px;color:#666"><b>Comprimento</b></td><td style="padding:3px 8px">${sd.length}m</td></tr>` : ''}
+        ${sd.beam ? `<tr><td style="padding:3px 8px;color:#666"><b>Boca</b></td><td style="padding:3px 8px">${sd.beam}m</td></tr>` : ''}
+        ${sd.draught ? `<tr><td style="padding:3px 8px;color:#666"><b>Calado</b></td><td style="padding:3px 8px">${sd.draught}m</td></tr>` : ''}
+        <tr><td style="padding:3px 8px;color:#666"><b>Velocidade</b></td><td style="padding:3px 8px">${data.sog} nós</td></tr>
+        <tr><td style="padding:3px 8px;color:#666"><b>Proa</b></td><td style="padding:3px 8px">${Math.round(data.heading)}°</td></tr>
+        <tr><td style="padding:3px 8px;color:#666"><b>Status</b></td><td style="padding:3px 8px">${navStatusText}</td></tr>
+        ${sd.destination ? `<tr><td style="padding:3px 8px;color:#666"><b>Destino</b></td><td style="padding:3px 8px">${sd.destination}</td></tr>` : ''}
+        ${sd.callSign ? `<tr><td style="padding:3px 8px;color:#666"><b>Indicativo</b></td><td style="padding:3px 8px">${sd.callSign}</td></tr>` : ''}
+        <tr><td style="padding:3px 8px;color:#666"><b>Atualizado</b></td><td style="padding:3px 8px">${data.timestamp || '—'}</td></tr>
+      </table>
+    </div>
+  `;
+}
+
+function updateAISCount() {
+  const count = Object.keys(aisEntities).length;
+  const el = document.getElementById('aisCountNum');
+  if (el) el.textContent = count;
+}
+
+function updateAISStatus(status) {
+  const el = document.getElementById('aisStatus');
+  if (el) {
+    el.textContent = `(${status})`;
+    el.style.color = status === 'Conectado' ? '#22c55e' : status === 'Erro' ? '#ef4444' : '#64748b';
+  }
+}
+
+// ============================================================
+//  LINEUP ANTAQ — Fallback com dados reais de atracação
+// ============================================================
+const LINEUP_API = 'https://lineup-antaq.up.railway.app/api/v1';
+
+// Terminais de Santos — coordenadas calibradas NA ÁGUA via satélite + Poligonais GeoJSON
+// Cada berço é um ponto confirmado na superfície da água junto ao cais
+// Berços dos terminais — TODOS no CENTRO DO CANAL (waypoints confirmados na água)
+// Empurrados para longe da margem para garantir que nunca fiquem em terra
+const SANTOS_TERMINALS = {
+  SANTOS_BRASIL: {
+    name: 'Santos Brasil (Tecon)', side: 'esquerda',
+    // Usa waypoints centrais do canal na região do Tecon
+    berths: [
+      { lat: -23.95800, lon: -46.30100, heading: 135 },
+      { lat: -23.96111, lon: -46.29959, heading: 315 },
+      { lat: -23.96400, lon: -46.29600, heading: 135 },
+      { lat: -23.96714, lon: -46.29772, heading: 315 },
+    ]
+  },
+  BTP_SANTOS: {
+    name: 'BTP', side: 'direita',
+    // Centro do canal na região da Alemoa/BTP (lon mais negativo)
+    berths: [
+      { lat: -23.92000, lon: -46.35000, heading: 250 },
+      { lat: -23.92000, lon: -46.34700, heading: 70 },
+      { lat: -23.92000, lon: -46.34400, heading: 250 },
+    ]
+  },
+  DPWORLD_SANTOS: {
+    name: 'DP World', side: 'esquerda',
+    // Centro do canal frente à Ilha Barnabé
+    berths: [
+      { lat: -23.93526, lon: -46.31084, heading: 270 },
+      { lat: -23.93300, lon: -46.31300, heading: 90 },
+      { lat: -23.93100, lon: -46.31500, heading: 270 },
+    ]
+  },
+  ECOPORTO: {
+    name: 'Ecoporto', side: 'direita',
+    // Centro do canal na região Outeirinhos/Macuco
+    berths: [
+      { lat: -23.94302, lon: -46.30616, heading: 310 },
+      { lat: -23.94100, lon: -46.30750, heading: 130 },
+      { lat: -23.93900, lon: -46.30850, heading: 310 },
+    ]
+  },
+};
+
+// Pontos confirmados NA ÁGUA do canal para navios em trânsito (DEPARTED / navegando)
+// Calibrados via satélite top-down — todos verificados como água
+const CANAL_WAYPOINTS = [
+  { lat: -23.92406, lon: -46.31084 }, // Canal na Alemoa
+  { lat: -23.93526, lon: -46.31084 }, // Canal frente DP World
+  { lat: -23.94302, lon: -46.30616 }, // Canal Outeirinhos
+  { lat: -23.95077, lon: -46.30241 }, // Canal meio
+  { lat: -23.96111, lon: -46.29959 }, // Canal frente Tecon
+  { lat: -23.96714, lon: -46.29772 }, // Canal na barra
+];
+
+let lineupEntities = [];
+let lineupLoaded = false;
+
+// Mapeamento carrier → cor
+function getCarrierColor(carrier) {
+  const map = {
+    MSC: '#1e40af', MAE: '#0369a1', MSK: '#0369a1', HLC: '#ea580c',
+    CGM: '#dc2626', CMA: '#dc2626', ZIM: '#7c3aed', LOG: '#16a34a',
+    EVR: '#059669', ONE: '#e11d48', HPL: '#f59e0b', ALI: '#0891b2',
+    GRI: '#8b5cf6', OWS: '#64748b', HGF: '#64748b', ASV: '#64748b',
+    ALP: '#64748b',
+  };
+  return map[carrier] || '#94a3b8';
+}
+
+async function loadLineupData() {
+  if (lineupLoaded) return;
+  console.log('📋 Carregando dados Lineup ANTAQ...');
+
+  const terminals = Object.keys(SANTOS_TERMINALS);
+  const allCalls = [];
+
+  for (const code of terminals) {
+    try {
+      const resp = await fetch(`${LINEUP_API}/port-calls?terminal=${code}&days=14&limit=50`);
+      if (!resp.ok) continue;
+      const data = await resp.json();
+
+      // Dedupliçar por vessel_name + status (API retorna múltiplas capturas)
+      const seen = new Set();
+      for (const pc of (data.port_calls || [])) {
+        const key = `${pc.vessel_name}_${pc.status}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          allCalls.push({ ...pc, _terminalCode: code });
+        }
+      }
+    } catch (e) {
+      console.warn(`Lineup fetch error for ${code}:`, e);
+    }
+  }
+
+  // Filtrar: BERTHED > EXPECTED (próximos 7 dias) > DEPARTED recentes
+  const now = new Date();
+  const berthed = allCalls.filter(c => c.status === 'BERTHED');
+  const expected = allCalls.filter(c => {
+    if (c.status !== 'EXPECTED') return false;
+    if (!c.eta) return true; // Sem ETA mas esperado = incluir
+    const eta = new Date(c.eta);
+    const diffDays = (eta - now) / (1000 * 60 * 60 * 24);
+    return diffDays >= -2 && diffDays <= 7;
+  });
+  const departed = allCalls.filter(c => {
+    if (c.status !== 'DEPARTED') return false;
+    // Incluir departed recentes (últimas 48h) como "saindo do canal"
+    const captured = new Date(c.captured_at);
+    const diffH = (now - captured) / (1000 * 60 * 60);
+    return diffH <= 48;
+  });
+
+  // Ordenar expected por ETA (mais próximos primeiro)
+  expected.sort((a, b) => {
+    if (!a.eta) return 1; if (!b.eta) return -1;
+    return new Date(a.eta) - new Date(b.eta);
+  });
+  const shipsToShow = [...berthed, ...expected.slice(0, 20), ...departed.slice(0, 8)];
+  console.log(`📋 Lineup: ${berthed.length} atracados, ${expected.length} esperados, ${departed.length} partidos → mostrando ${shipsToShow.length}`);
+
+  createLineupMarkers(shipsToShow);
+  lineupLoaded = true;
+}
+
+function createLineupMarkers(portCalls) {
+  // Limpar marcadores anteriores
+  lineupEntities.forEach(e => viewer.entities.remove(e));
+  lineupEntities = [];
+
+  // Contador de berço por terminal
+  const berthIndex = {};
+
+  portCalls.forEach(pc => {
+    const termCode = pc._terminalCode;
+    const terminal = SANTOS_TERMINALS[termCode];
+    if (!terminal) return;
+
+    let lat, lon;
+
+    if (pc.status === 'DEPARTED') {
+      // Navios departed: posicionar nos waypoints do canal (confirmados na água)
+      if (!berthIndex['_canal']) berthIndex['_canal'] = 0;
+      const cPos = CANAL_WAYPOINTS[berthIndex['_canal'] % CANAL_WAYPOINTS.length];
+      lat = cPos.lat;
+      lon = cPos.lon;
+      berthIndex['_canal']++;
+    } else {
+      // BERTHED / EXPECTED: posicionar no berço do terminal
+      if (!berthIndex[termCode]) berthIndex[termCode] = 0;
+      const berth = terminal.berths[berthIndex[termCode] % terminal.berths.length];
+      berthIndex[termCode]++;
+
+      // Pequeno offset para não sobrepor navios no mesmo berço
+      const offset = (berthIndex[termCode] - 1) * 0.0003;
+      const headRad = Math.PI * berth.heading / 180;
+      lat = berth.lat + offset * Math.cos(headRad);
+      lon = berth.lon + offset * Math.sin(headRad);
+    }
+
+    const color = getCarrierColor(pc.carrier_code);
+    const isBerthed = pc.status === 'BERTHED';
+    const isDeparted = pc.status === 'DEPARTED';
+    const statusIcon = isBerthed ? '🟢' : isDeparted ? '🔵' : '🟡';
+    const statusText = isBerthed ? 'Atracado' : isDeparted ? 'Partiu (no canal)' : 'Esperado';
+
+    const entity = viewer.entities.add({
+      name: `[Lineup] ${pc.vessel_name}`,
+      position: Cesium.Cartesian3.fromDegrees(lon, lat, 2),
+
+      point: {
+        pixelSize: isBerthed ? 14 : 10,
+        color: Cesium.Color.fromCssColorString(color),
+        outlineColor: Cesium.Color.fromCssColorString(isBerthed ? '#22c55e' : isDeparted ? '#3b82f6' : '#f59e0b'),
+        outlineWidth: 2.5,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+
+      label: {
+        text: pc.vessel_name,
+        font: '11px sans-serif',
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -12),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 12000),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString(isBerthed ? 'rgba(5,46,22,0.75)' : isDeparted ? 'rgba(15,23,42,0.75)' : 'rgba(66,32,6,0.75)'),
+        backgroundPadding: new Cesium.Cartesian2(5, 3),
+      },
+
+      description: `
+        <div style="font-family:system-ui;padding:8px;">
+          <h3 style="margin:0 0 8px;color:${color}">
+            ${statusIcon} ${pc.vessel_name}
+            <span style="font-size:11px;color:#888">[Lineup ANTAQ]</span>
+          </h3>
+          <table style="width:100%;font-size:13px;border-collapse:collapse;">
+            <tr><td style="padding:3px 8px;color:#666"><b>Status</b></td><td style="padding:3px 8px;color:${isBerthed ? '#22c55e' : '#f59e0b'}">${statusText}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Terminal</b></td><td style="padding:3px 8px">${terminal.name}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Armador</b></td><td style="padding:3px 8px;color:${color}">${pc.carrier_code}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Serviço</b></td><td style="padding:3px 8px">${pc.service || '—'}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Viagem</b></td><td style="padding:3px 8px">${pc.voyage_id || '—'}</td></tr>
+            ${pc.eta ? `<tr><td style="padding:3px 8px;color:#666"><b>ETA</b></td><td style="padding:3px 8px">${new Date(pc.eta).toLocaleString('pt-BR')}</td></tr>` : ''}
+            ${pc.ata ? `<tr><td style="padding:3px 8px;color:#666"><b>Chegada real</b></td><td style="padding:3px 8px">${new Date(pc.ata).toLocaleString('pt-BR')}</td></tr>` : ''}
+            ${pc.atb ? `<tr><td style="padding:3px 8px;color:#666"><b>Atracação</b></td><td style="padding:3px 8px">${new Date(pc.atb).toLocaleString('pt-BR')}</td></tr>` : ''}
+            ${pc.etd ? `<tr><td style="padding:3px 8px;color:#666"><b>Saída prevista</b></td><td style="padding:3px 8px">${new Date(pc.etd).toLocaleString('pt-BR')}</td></tr>` : ''}
+            ${pc.cargo_cutoff ? `<tr><td style="padding:3px 8px;color:#666"><b>Cutoff carga</b></td><td style="padding:3px 8px">${new Date(pc.cargo_cutoff).toLocaleString('pt-BR')}</td></tr>` : ''}
+            <tr><td style="padding:3px 8px;color:#666"><b>Fonte</b></td><td style="padding:3px 8px">Lineup ANTAQ</td></tr>
+          </table>
+        </div>
+      `,
+    });
+
+    lineupEntities.push(entity);
+  });
+
+  // Atualizar contador
+  const el = document.getElementById('aisCountNum');
+  if (el && Object.keys(aisEntities).length === 0) {
+    el.textContent = lineupEntities.length;
+    el.style.color = '#f59e0b';
+    const statusEl = document.getElementById('aisStatus');
+    if (statusEl) {
+      statusEl.textContent = '(Lineup ANTAQ)';
+      statusEl.style.color = '#f59e0b';
+    }
+  }
+}
+
+// ============================================================
+//  TÚNEL SUBMERSO SANTOS-GUARUJÁ — Simulação 3D
+// ============================================================
+// Fonte: Projeto PPP Mota-Engil / Gov. SP (contrato assinado jan/2026)
+// Tipo: Túnel imerso (6 módulos pré-fabricados de 145m cada)
+// Dimensões: 33m largura, ~10m altura, 6 faixas + galeria central
+// Profundidade: 21m abaixo da superfície da água
+// Extensão total: ~1.5km submerso + ~950m rampas + ~4.5km vias de acesso
+
+let tunnelEntities = [];
+let tunnelBuilt = false;
+
+// Traçado do túnel — waypoints calibrados
+// Santos (Macuco/Outeirinhos) → cruzamento do canal → Guarujá (Vicente de Carvalho)
+// Traçado V5 — DESENHADO PELO USUÁRIO no mapa, com perfil de profundidade aplicado
+// Pontos 1-5: Rampa Santos (superfície → descida)
+// Pontos 6-8: Curva de entrada no canal (descendo)
+// Pontos 9-11: Seção submersa (cruzando canal a -21m)
+// Pontos 12-14: Rampa Guarujá (subindo)
+// Pontos 15-17: Acesso Guarujá (superfície, avenida rumo Rod. Cônego)
+const TUNNEL_ROUTE = {
+  santosApproach: [
+    { lat: -23.96128, lon: -46.30572, alt: 5 },   // Pt1: Início Av. R. Alves
+    { lat: -23.96036, lon: -46.30638, alt: 3 },   // Pt2: Segue avenida
+    { lat: -23.95931, lon: -46.30722, alt: 0 },   // Pt3: Descendo
+    { lat: -23.95832, lon: -46.30805, alt: -5 },  // Pt4: Rampa
+    { lat: -23.95782, lon: -46.30845, alt: -10 }, // Pt5: Mergulhando
+    { lat: -23.95730, lon: -46.30860, alt: -15 }, // Pt6: Curva entrada canal
+  ],
+  submerged: [
+    { lat: -23.95689, lon: -46.30843, alt: -21 }, // Pt7: Início seção submersa
+    { lat: -23.95653, lon: -46.30806, alt: -21 }, // Pt8: Sob o canal
+    { lat: -23.95542, lon: -46.30686, alt: -21 }, // Pt9: Centro do canal
+    { lat: -23.95399, lon: -46.30528, alt: -21 }, // Pt10: Sob o canal
+    { lat: -23.95316, lon: -46.30442, alt: -21 }, // Pt11: Fim seção submersa
+  ],
+  guarujaApproach: [
+    { lat: -23.95188, lon: -46.30336, alt: -15 }, // Pt12: Subindo
+    { lat: -23.95014, lon: -46.30256, alt: -8 },  // Pt13: Rampa subida
+    { lat: -23.94781, lon: -46.30138, alt: -2 },  // Pt14: Quase superfície
+    { lat: -23.94607, lon: -46.30048, alt: 2 },   // Pt15: Superfície V. Carvalho
+    { lat: -23.94455, lon: -46.29972, alt: 5 },   // Pt16: Segue avenida NE
+    { lat: -23.94153, lon: -46.29815, alt: 5 },   // Pt17: Conexão Rod. Cônego
+  ],
+};
+
+const TUNNEL_WIDTH = 33; // metros (dimensão real do projeto)
+const TUNNEL_HEIGHT = 10; // metros
+
+function buildTunnel() {
+  if (tunnelBuilt) return;
+
+  const allPoints = [
+    ...TUNNEL_ROUTE.santosApproach,
+    ...TUNNEL_ROUTE.submerged,
+    ...TUNNEL_ROUTE.guarujaApproach,
+  ];
+
+  // === 1. CORPO DO TÚNEL — Segmentos de box ao longo do traçado ===
+  for (let i = 0; i < allPoints.length - 1; i++) {
+    const p1 = allPoints[i];
+    const p2 = allPoints[i + 1];
+
+    const midLat = (p1.lat + p2.lat) / 2;
+    const midLon = (p1.lon + p2.lon) / 2;
+    const midAlt = (p1.alt + p2.alt) / 2;
+
+    // Calcular heading entre os dois pontos
+    const dLat = p2.lat - p1.lat;
+    const dLon = p2.lon - p1.lon;
+    const heading = Math.atan2(dLon, dLat) * 180 / Math.PI;
+
+    // Comprimento do segmento em metros
+    const segLen = Math.sqrt(
+      Math.pow((p2.lat - p1.lat) * 111320, 2) +
+      Math.pow((p2.lon - p1.lon) * 111320 * Math.cos(midLat * Math.PI / 180), 2)
+    );
+
+    // Determinar se é seção submersa ou rampa
+    const isSubmerged = midAlt <= -18;
+    const isRamp = !isSubmerged;
+
+    // Cor: concreto cinza para submerso, asfalto escuro para rampas
+    const bodyColor = isSubmerged
+      ? Cesium.Color.fromCssColorString('#64748b').withAlpha(0.85)
+      : Cesium.Color.fromCssColorString('#475569').withAlpha(0.80);
+
+    // Corpo principal do túnel
+    const entity = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(midLon, midLat, midAlt + TUNNEL_HEIGHT / 2),
+      orientation: Cesium.Transforms.headingPitchRollQuaternion(
+        Cesium.Cartesian3.fromDegrees(midLon, midLat, midAlt + TUNNEL_HEIGHT / 2),
+        new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(90 - heading), 0, 0)
+      ),
+      box: {
+        dimensions: new Cesium.Cartesian3(segLen + 2, TUNNEL_WIDTH, TUNNEL_HEIGHT),
+        material: bodyColor,
+        outline: true,
+        outlineColor: Cesium.Color.fromCssColorString('#1e293b').withAlpha(0.6),
+      },
+      show: false,
+    });
+    tunnelEntities.push(entity);
+
+    // Línha de separação central (galeria pedestre/ciclista)
+    if (isSubmerged) {
+      const centerLine = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(midLon, midLat, midAlt + TUNNEL_HEIGHT + 0.5),
+        orientation: Cesium.Transforms.headingPitchRollQuaternion(
+          Cesium.Cartesian3.fromDegrees(midLon, midLat, midAlt + TUNNEL_HEIGHT + 0.5),
+          new Cesium.HeadingPitchRoll(Cesium.Math.toRadians(90 - heading), 0, 0)
+        ),
+        box: {
+          dimensions: new Cesium.Cartesian3(segLen + 2, 1.5, 0.3),
+          material: Cesium.Color.fromCssColorString('#f59e0b').withAlpha(0.9),
+        },
+        show: false,
+      });
+      tunnelEntities.push(centerLine);
+    }
+
+    // Faixas de rodagem (marcas na superfície superior)
+    for (const laneOffset of [-12, -8.5, -5, 5, 8.5, 12]) {
+      // Pequenas marcas de faixa no topo do túnel
+      const mPerDegLat = 111320;
+      const mPerDegLon = 111320 * Math.cos(midLat * Math.PI / 180);
+      const perpHeading = (heading + 90) * Math.PI / 180;
+      const offsetLat = laneOffset * Math.cos(perpHeading) / mPerDegLat;
+      const offsetLon = laneOffset * Math.sin(perpHeading) / mPerDegLon;
+
+      if (i % 3 === 0) { // Não em todo segmento para performance
+        const laneMark = viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(
+            midLon + offsetLon, midLat + offsetLat, midAlt + TUNNEL_HEIGHT + 0.2
+          ),
+          box: {
+            dimensions: new Cesium.Cartesian3(8, 0.3, 0.1),
+            material: Cesium.Color.WHITE.withAlpha(0.7),
+          },
+          show: false,
+        });
+        tunnelEntities.push(laneMark);
+      }
+    }
+  }
+
+  // === 2. JUNTAS DOS MÓDULOS (linhas verdes a cada ~145m na seção submersa) ===
+  const subPts = TUNNEL_ROUTE.submerged;
+  for (let i = 0; i < subPts.length; i++) {
+    const p = subPts[i];
+    const entity = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.alt + TUNNEL_HEIGHT + 0.5),
+      ellipse: {
+        semiMajorAxis: TUNNEL_WIDTH / 2 + 2,
+        semiMinorAxis: 2,
+        material: Cesium.Color.fromCssColorString('#22c55e').withAlpha(0.6),
+        height: p.alt + TUNNEL_HEIGHT + 0.3,
+      },
+      show: false,
+    });
+    tunnelEntities.push(entity);
+  }
+
+  // === 3. PORTAIS DE ENTRADA (arcos nas bocas do túnel) ===
+  const portals = [
+    { ...TUNNEL_ROUTE.santosApproach[TUNNEL_ROUTE.santosApproach.length - 1], side: 'Santos' },
+    { ...TUNNEL_ROUTE.guarujaApproach[0], side: 'Guarujá' },
+  ];
+
+  portals.forEach(portal => {
+    // Arco do portal
+    const portalEntity = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(portal.lon, portal.lat, portal.alt + TUNNEL_HEIGHT / 2),
+      box: {
+        dimensions: new Cesium.Cartesian3(TUNNEL_WIDTH + 4, 5, TUNNEL_HEIGHT + 4),
+        material: Cesium.Color.fromCssColorString('#334155').withAlpha(0.9),
+        outline: true,
+        outlineColor: Cesium.Color.fromCssColorString('#f59e0b').withAlpha(0.8),
+      },
+      show: false,
+    });
+    tunnelEntities.push(portalEntity);
+  });
+
+  // === 4. TRAÇADO DE SUPERFÍCIE — estilo Google Maps (bordas + preenchimento + separador central) ===
+  const surfaceCoords = allPoints.flatMap(p => [p.lon, p.lat]);
+  const positions = Cesium.Cartesian3.fromDegreesArray(surfaceCoords);
+
+  // Estilo Google Maps — borda cinza + via branca + separador amarelo
+  // Elevadas a alturas diferentes para evitar sobreposição (clampToGround esconde camadas)
+  const surfacePositionsLow = allPoints.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 8));
+  const surfacePositionsMid = allPoints.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 9));
+  const surfacePositionsHigh = allPoints.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 10));
+
+  // Borda cinza (mais baixa, mais larga)
+  tunnelEntities.push(viewer.entities.add({
+    polyline: { positions: surfacePositionsLow, width: 22, material: Cesium.Color.fromCssColorString('#cbd5e1').withAlpha(0.9) },
+    show: false,
+  }));
+  // Via cinza claro (meio, um pouco mais estreita)
+  tunnelEntities.push(viewer.entities.add({
+    polyline: { positions: surfacePositionsMid, width: 16, material: Cesium.Color.fromCssColorString('#4b5563').withAlpha(0.92) },
+    show: false,
+  }));
+  // Separador central amarelo (mais alta, fina)
+  tunnelEntities.push(viewer.entities.add({
+    polyline: { positions: surfacePositionsHigh, width: 2, material: Cesium.Color.fromCssColorString('#f59e0b').withAlpha(0.95) },
+    show: false,
+  }));
+
+  // === 5. LABELS INFORMATIVOS ===
+  const labels = [
+    { lat: -23.96128, lon: -46.30572, alt: 35, text: "PORTAL SANTOS\nAv. Cons. Rodrigues Alves\nMacuco / Outeirinhos\n3 faixas + galeria" },
+    { lat: -23.95542, lon: -46.30686, alt: 10, text: "SEÇÃO SUBMERSA\n870m × 33m × 10m\n21m abaixo da água\n6 módulos de 145m" },
+    { lat: -23.94153, lon: -46.29815, alt: 35, text: "PORTAL GUARUJÁ\nVicente de Carvalho\nRod. Cônego Domênico Rangoni\n3 faixas + galeria" },
+    { lat: -23.95600, lon: -46.30750, alt: 60, text: "TÚNEL SUBMERSO\nSANTOS-GUARUJÁ\nMota-Engil • 2026-2031\nR$ 6,8 bi • 6 faixas" },
+  ];
+
+  labels.forEach(l => {
+    const entity = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(l.lon, l.lat, l.alt),
+      label: {
+        text: l.text,
+        font: l.text.includes('TÚNEL SUBMERSO') ? 'bold 14px sans-serif' : '11px sans-serif',
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 3,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString('rgba(15, 23, 42, 0.85)'),
+        backgroundPadding: new Cesium.Cartesian2(8, 6),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, l.text.includes('TÚNEL SUBMERSO') ? 15000 : 5000),
+        heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
+      },
+      show: false,
+    });
+    tunnelEntities.push(entity);
+  });
+
+  // === 6. INDICADORES DE PROFUNDIDADE ===
+  const depthMarkers = [
+    { lat: -23.95730, lon: -46.30860, depth: 15, label: "-15m" },
+    { lat: -23.95653, lon: -46.30806, depth: 21, label: "-21m" },
+    { lat: -23.95399, lon: -46.30528, depth: 21, label: "-21m (máx)" },
+    { lat: -23.95188, lon: -46.30336, depth: 15, label: "-15m" },
+  ];
+
+  depthMarkers.forEach(d => {
+    // Linha vertical de profundidade
+    const lineEntity = viewer.entities.add({
+      polyline: {
+        positions: [
+          Cesium.Cartesian3.fromDegrees(d.lon, d.lat, 5),
+          Cesium.Cartesian3.fromDegrees(d.lon, d.lat, -d.depth),
+        ],
+        width: 2,
+        material: Cesium.Color.fromCssColorString('#06b6d4').withAlpha(0.6),
+      },
+      show: false,
+    });
+    tunnelEntities.push(lineEntity);
+
+    // Label de profundidade
+    const depthLabel = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(d.lon, d.lat, -d.depth / 2),
+      label: {
+        text: d.label,
+        font: 'bold 10px monospace',
+        fillColor: Cesium.Color.fromCssColorString('#06b6d4'),
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 3000),
+      },
+      show: false,
+    });
+    tunnelEntities.push(depthLabel);
+  });
+
+  tunnelBuilt = true;
+  console.log(`🚇 Túnel Santos-Guarujá: ${tunnelEntities.length} entidades criadas`);
+}
+
+// ============================================================
+//  FERRAMENTA DE DESENHO — traçar rotas clicando no mapa
+// ============================================================
+let drawMode = false;
+let drawPoints = [];
+let drawEntities = [];
+let drawLineEntity = null;
+let drawHandler = null;
+
+function toggleDrawMode() {
+  drawMode = !drawMode;
+  const panel = document.getElementById('drawPanel');
+  const btn = document.getElementById('drawBtn');
+
+  if (drawMode) {
+    panel.style.display = 'block';
+    btn.style.background = 'rgba(239,68,68,0.6)';
+    btn.textContent = '✏️ Desenhando...';
+
+    // Handler de clique no mapa
+    drawHandler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+    drawHandler.setInputAction(function(click) {
+      // Tentar pegar coordenadas do clique
+      const ray = viewer.camera.getPickRay(click.position);
+      let cartesian;
+
+      // Tentar pick nas 3D tiles primeiro
+      const picked = viewer.scene.pickFromRay(ray);
+      if (picked && picked.position) {
+        cartesian = picked.position;
+      } else {
+        // Fallback: pick no elipsoide
+        cartesian = viewer.camera.pickEllipsoid(click.position);
+      }
+
+      if (!cartesian) return;
+
+      const cartographic = Cesium.Cartographic.fromCartesian(cartesian);
+      const lat = parseFloat(Cesium.Math.toDegrees(cartographic.latitude).toFixed(5));
+      const lon = parseFloat(Cesium.Math.toDegrees(cartographic.longitude).toFixed(5));
+      const alt = Math.round(cartographic.height);
+
+      drawPoints.push({ lat, lon, alt });
+
+      // Marcador visual
+      const marker = viewer.entities.add({
+        position: Cesium.Cartesian3.fromDegrees(lon, lat, alt + 5),
+        point: {
+          pixelSize: 10,
+          color: Cesium.Color.RED,
+          outlineColor: Cesium.Color.WHITE,
+          outlineWidth: 2,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+        label: {
+          text: `${drawPoints.length}`,
+          font: 'bold 11px monospace',
+          fillColor: Cesium.Color.RED,
+          outlineColor: Cesium.Color.BLACK,
+          outlineWidth: 2,
+          style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+          pixelOffset: new Cesium.Cartesian2(12, -12),
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      });
+      drawEntities.push(marker);
+
+      // Atualizar linha conectando os pontos
+      updateDrawLine();
+      document.getElementById('drawCount').textContent = `${drawPoints.length} pontos`;
+
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+  } else {
+    panel.style.display = 'none';
+    btn.style.background = 'rgba(239,68,68,0.3)';
+    btn.textContent = 'Desenhar';
+
+    // Limpar handler
+    if (drawHandler) { drawHandler.destroy(); drawHandler = null; }
+    // Limpar entidades de desenho
+    drawEntities.forEach(e => viewer.entities.remove(e));
+    drawEntities = [];
+    if (drawLineEntity) { viewer.entities.remove(drawLineEntity); drawLineEntity = null; }
+    drawPoints = [];
+  }
+}
+
+function updateDrawLine() {
+  if (drawLineEntity) { viewer.entities.remove(drawLineEntity); }
+  if (drawPoints.length < 2) return;
+
+  const coords = drawPoints.flatMap(p => [p.lon, p.lat]);
+  drawLineEntity = viewer.entities.add({
+    polyline: {
+      positions: Cesium.Cartesian3.fromDegreesArray(coords),
+      width: 5,
+      material: Cesium.Color.RED.withAlpha(0.8),
+      clampToGround: true,
+    },
+  });
+}
+
+function undoDrawPoint() {
+  if (drawPoints.length === 0) return;
+  drawPoints.pop();
+  const last = drawEntities.pop();
+  if (last) viewer.entities.remove(last);
+  updateDrawLine();
+  document.getElementById('drawCount').textContent = `${drawPoints.length} pontos`;
+}
+
+function finishDraw() {
+  if (drawPoints.length < 2) { alert('Adicione pelo menos 2 pontos!'); return; }
+
+  const json = JSON.stringify(drawPoints, null, 2);
+  document.getElementById('coordsOutput').value = json;
+  document.getElementById('coordsModal').style.display = 'block';
+}
+
+function copyCoords() {
+  const textarea = document.getElementById('coordsOutput');
+  textarea.select();
+  document.execCommand('copy');
+  alert('Coordenadas copiadas! Cole aqui no chat para eu fixar no código.');
+}
+
+function toggleTunnel(enabled) {
+  if (enabled && !tunnelBuilt) {
+    buildTunnel();
+  }
+  tunnelEntities.forEach(e => { e.show = enabled; });
+  if (enabled) flyTo('tunel');
+}
+
+// ============================================================
+//  AUTO-START
+// ============================================================
+window.addEventListener('DOMContentLoaded', () => {
+  // Renderizar ícones Lucide
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+
+  const cesiumToken = CESIUM_ION_TOKEN || localStorage.getItem('cesiumToken');
+  const googleKey = GOOGLE_MAPS_API_KEY || localStorage.getItem('googleMapsKey');
+
+  const aisKey = AIS_STREAM_API_KEY || localStorage.getItem('aisStreamKey');
+
+  if (cesiumToken) document.getElementById('cesiumTokenInput').value = cesiumToken;
+  if (googleKey) document.getElementById('googleKeyInput').value = googleKey;
+  if (aisKey) document.getElementById('aisKeyInput').value = aisKey;
+
+  // Iniciar direto se as chaves estão configuradas nas constantes
+  if (cesiumToken && googleKey) {
+    document.getElementById('token-overlay').style.display = 'none';
+    document.getElementById('loading').style.display = 'block';
+    initMap(cesiumToken, googleKey, aisKey);
+  }
+
+  // Se não tem chave, não mostra formulário — apenas mensagem
+  if (!cesiumToken || !googleKey) {
+    console.warn('Chaves não configuradas nas constantes do código');
+  }
+});
+</script>
+</body>
+</html>
