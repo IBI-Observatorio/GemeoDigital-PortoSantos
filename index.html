@@ -541,12 +541,9 @@ async function initMap(cesiumToken, googleKey, aisKey) {
   buildTunnel();
   tunnelEntities.forEach(e => { e.show = true; });
 
-  // Posicionar câmera — offset SE para compensar heading 320° + pitch
-  // A câmera fica a SE olhando para NW, centralizando o túnel na tela
-  viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(-46.2920, -23.9675, 1500),
-    orientation: { heading: Cesium.Math.toRadians(320), pitch: Cesium.Math.toRadians(-35), roll: 0 }
-  });
+  // Posicionar câmera — usar flyTo com delay para garantir que as tiles carregaram
+  // O setView imediato fica deslocado porque o terreno ainda não carregou
+  setTimeout(() => { flyTo('tunel'); }, 2000);
 
   // Mostrar UI
   document.getElementById('controls').style.display = 'block';
