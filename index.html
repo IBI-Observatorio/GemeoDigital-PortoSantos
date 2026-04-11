@@ -339,7 +339,7 @@
   <h2><i data-lucide="layers" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px"></i> Camadas</h2>
   <div class="control-row"><label>Mapa 3D fotorrealista</label><input type="checkbox" id="toggle3DTiles" checked onchange="toggleLayer('tiles3d')"></div>
   <div class="control-row"><label id="streetLabel">Nomes de ruas</label><input type="checkbox" id="toggleStreets" onchange="toggleLayer('streets')"></div>
-  <div class="control-row"><label id="tunnelLabel">Túnel Santos-Guarujá</label><input type="checkbox" id="toggleTunnel" onchange="toggleLayer('tunnel')"></div>
+  <div class="control-row"><label id="tunnelLabel">Túnel Santos-Guarujá</label><input type="checkbox" id="toggleTunnel" checked onchange="toggleLayer('tunnel')"></div>
   <div class="control-row"><label>Navios simulados</label><input type="checkbox" id="toggleShips" checked onchange="toggleLayer('ships')"></div>
   <div class="control-row"><label>Navios AIS (tempo real)</label><input type="checkbox" id="toggleAIS" checked onchange="toggleLayer('ais')"></div>
   <div class="control-row"><label>Labels dos navios</label><input type="checkbox" id="toggleLabels" checked onchange="toggleLayer('labels')"></div>
@@ -534,13 +534,14 @@ async function initMap(cesiumToken, googleKey, aisKey) {
 
   document.getElementById('loading').style.display = 'none';
 
-  // Criar marcadores de navios
+  // Criar marcadores de navios e túnel
   createShipMarkers();
+  buildTunnel();
 
-  // Posicionar câmera instantaneamente em Santos (sem depender de flyTo)
+  // Posicionar câmera instantaneamente em Santos
   viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(-46.3200, -23.9380, 4000),
-    orientation: { heading: Cesium.Math.toRadians(130), pitch: Cesium.Math.toRadians(-35), roll: 0 }
+    destination: Cesium.Cartesian3.fromDegrees(-46.2968, -23.9753, 1513),
+    orientation: { heading: Cesium.Math.toRadians(320), pitch: Cesium.Math.toRadians(-25), roll: 0 }
   });
 
   // Mostrar UI
@@ -890,7 +891,7 @@ function flyTo(location) {
   event?.target?.classList.add('active');
 
   const views = {
-    porto:  { dest: [-46.3200, -23.9380, 4000], heading: 130, pitch: -35 },
+    porto:  { dest: [-46.2968, -23.9753, 1513], heading: 320, pitch: -25 },
     tecon:  { dest: [-46.2920, -23.9610, 500],  heading: 315, pitch: -25 },
     btp:    { dest: [-46.3510, -23.9190, 500],   heading: 170, pitch: -25 },
     alemoa: { dest: [-46.3680, -23.9170, 500],   heading: 160, pitch: -25 },
