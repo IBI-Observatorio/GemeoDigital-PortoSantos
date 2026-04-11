@@ -534,14 +534,17 @@ async function initMap(cesiumToken, googleKey, aisKey) {
 
   document.getElementById('loading').style.display = 'none';
 
-  // Criar marcadores de navios e túnel
+  // Criar marcadores de navios
   createShipMarkers();
-  buildTunnel();
 
-  // Posicionar câmera instantaneamente em Santos
+  // Construir e mostrar túnel (checkbox já marcado por padrão)
+  buildTunnel();
+  tunnelEntities.forEach(e => { e.show = true; });
+
+  // Posicionar câmera — vista do canal centralizada no túnel
   viewer.camera.setView({
-    destination: Cesium.Cartesian3.fromDegrees(-46.2968, -23.9753, 1513),
-    orientation: { heading: Cesium.Math.toRadians(320), pitch: Cesium.Math.toRadians(-25), roll: 0 }
+    destination: Cesium.Cartesian3.fromDegrees(-46.3150, -23.9650, 2500),
+    orientation: { heading: Cesium.Math.toRadians(20), pitch: Cesium.Math.toRadians(-35), roll: 0 }
   });
 
   // Mostrar UI
@@ -891,7 +894,7 @@ function flyTo(location) {
   event?.target?.classList.add('active');
 
   const views = {
-    porto:  { dest: [-46.2968, -23.9753, 1513], heading: 320, pitch: -25 },
+    porto:  { dest: [-46.3150, -23.9650, 2500], heading: 20, pitch: -35 },
     tecon:  { dest: [-46.2920, -23.9610, 500],  heading: 315, pitch: -25 },
     btp:    { dest: [-46.3510, -23.9190, 500],   heading: 170, pitch: -25 },
     alemoa: { dest: [-46.3680, -23.9170, 500],   heading: 160, pitch: -25 },
