@@ -235,45 +235,69 @@ window.addEventListener('load', function() {
 let voiceRec = null;
 let voiceOn  = false;
 
+function setMicState(on, msg) {
+  document.getElementById('micBtn').classList.toggle('listening', on);
+  const lbl = document.getElementById('micLabel');
+  lbl.textContent = msg;
+  lbl.classList.toggle('listening', on);
+}
+
+function startRecognition() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  voiceRec = new SR();
+  voiceRec.lang = 'pt-BR';
+  voiceRec.continuous = false;   // mais compatível com iOS/Android
+  voiceRec.interimResults = false;
+  voiceRec.maxAlternatives = 1;
+
+  voiceRec.onresult = function(e) {
+    const transcript = e.results[0][0].transcript.trim();
+    document.getElementById('voiceResult').textContent = '\u201c' + transcript + '\u201d';
+    send(transcript);
+  };
+
+  voiceRec.onerror = function(e) {
+    if (e.error === 'no-speech') {
+      // sem fala — reinicia normalmente
+      if (voiceOn) setTimeout(startRecognition, 300);
+      return;
+    }
+    // erro real: mostra mensagem e para
+    setMicState(false, 'Erro: ' + e.error);
+    document.getElementById('voiceResult').textContent = 'Verifique permissao de microfone';
+    voiceOn = false;
+  };
+
+  voiceRec.onend = function() {
+    if (voiceOn) setTimeout(startRecognition, 200); // reinicia para proxima fala
+  };
+
+  try {
+    voiceRec.start();
+  } catch(err) {
+    setMicState(false, 'Erro ao iniciar microfone');
+    voiceOn = false;
+  }
+}
+
 function toggleVoice() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    alert('Reconhecimento de voz nao suportado. Use Chrome ou Safari.');
+    document.getElementById('voiceResult').textContent = 'Voz nao suportada — use Chrome ou Safari';
     return;
   }
   if (voiceOn) {
-    voiceRec && voiceRec.stop();
     voiceOn = false;
-    document.getElementById('micBtn').classList.remove('listening');
-    document.getElementById('micLabel').textContent = 'Toque para falar';
-    document.getElementById('micLabel').classList.remove('listening');
+    voiceRec && voiceRec.abort();
+    setMicState(false, 'Toque para falar');
     document.getElementById('voiceResult').textContent = '';
   } else {
-    if (!channelName) { alert('Conecte ao canal primeiro.'); return; }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    voiceRec = new SR();
-    voiceRec.lang = 'pt-BR';
-    voiceRec.continuous = true;
-    voiceRec.interimResults = false;
-    voiceRec.onresult = function(e) {
-      const transcript = e.results[e.results.length - 1][0].transcript.trim();
-      document.getElementById('voiceResult').textContent = '\u201c' + transcript + '\u201d';
-      send(transcript);
-    };
-    voiceRec.onerror = function(e) {
-      if (e.error === 'no-speech') return;
-      voiceOn = false;
-      document.getElementById('micBtn').classList.remove('listening');
-      document.getElementById('micLabel').textContent = 'Toque para falar';
-      document.getElementById('micLabel').classList.remove('listening');
-    };
-    voiceRec.onend = function() {
-      if (voiceOn) voiceRec.start();
-    };
-    voiceRec.start();
+    if (!channelName) {
+      document.getElementById('voiceResult').textContent = 'Conecte ao canal primeiro';
+      return;
+    }
     voiceOn = true;
-    document.getElementById('micBtn').classList.add('listening');
-    document.getElementById('micLabel').textContent = 'Ouvindo\u2026';
-    document.getElementById('micLabel').classList.add('listening');
+    setMicState(true, 'Ouvindo\u2026');
+    startRecognition();
   }
 }
 </script>
