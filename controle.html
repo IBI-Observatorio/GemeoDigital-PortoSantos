@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>Controle — Gêmeo Digital Porto Santos</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f172a; color: #e2e8f0;
+      font-family: -apple-system, system-ui, sans-serif;
+      padding: 14px 12px 40px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; padding-bottom: 12px;
+      border-bottom: 1px solid #1e293b;
+    }
+    header .title { font-weight: 700; color: #38bdf8; font-size: 15px; }
+    header .sub { font-size: 11px; color: #64748b; }
+
+    .channel-row { display: flex; gap: 8px; margin-bottom: 5px; }
+    .channel-row input {
+      flex: 1; background: #1e293b; border: 1px solid #334155;
+      border-radius: 7px; color: #e2e8f0; padding: 10px 12px;
+      font-size: 14px; outline: none;
+    }
+    .channel-row input:focus { border-color: #38bdf8; }
+    .btn-connect {
+      padding: 10px 18px; background: #0ea5e9; border: none;
+      border-radius: 7px; color: #fff; font-size: 14px;
+      font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .btn-connect:active { background: #0284c7; }
+
+    #status { font-size: 11px; color: #64748b; margin-bottom: 16px; min-height: 16px; }
+    #status.ok  { color: #22c55e; }
+    #status.err { color: #f87171; }
+
+    h2 {
+      font-size: 10px; text-transform: uppercase;
+      letter-spacing: .08em; color: #64748b;
+      margin: 18px 0 9px;
+    }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+    .cmd-btn {
+      padding: 16px 6px; background: #1e293b;
+      border: 1px solid #334155; border-radius: 10px;
+      color: #e2e8f0; font-size: 14px; font-weight: 500;
+      cursor: pointer; text-align: center;
+      transition: background .1s, border-color .1s;
+      line-height: 1.2;
+    }
+    .cmd-btn:active {
+      background: rgba(56,189,248,.18);
+      border-color: #38bdf8; color: #38bdf8;
+    }
+    .cmd-btn.layer { padding: 14px 8px; font-size: 13px; }
+    .cmd-btn.full { grid-column: 1 / -1; }
+
+    .custom-row { display: flex; gap: 8px; margin-top: 6px; }
+    .custom-row input {
+      flex: 1; background: #1e293b; border: 1px solid #334155;
+      border-radius: 8px; color: #e2e8f0;
+      padding: 13px 12px; font-size: 14px; outline: none;
+    }
+    .custom-row input:focus { border-color: #38bdf8; }
+    .btn-send {
+      padding: 13px 18px; background: #1e3a5f;
+      border: 1px solid #38bdf8; border-radius: 8px;
+      color: #38bdf8; font-size: 14px; font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-send:active { background: rgba(56,189,248,.2); }
+
+    #feedback { font-size: 12px; color: #38bdf8; margin-top: 8px; min-height: 18px; }
+
+    footer { margin-top: 32px; text-align: center; font-size: 11px; color: #334155; }
+    footer a { color: #475569; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+       fill="none" stroke="#38bdf8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+    <line x1="6" y1="1" x2="6" y2="4"/>
+    <line x1="10" y1="1" x2="10" y2="4"/>
+    <line x1="14" y1="1" x2="14" y2="4"/>
+  </svg>
+  <div>
+    <div class="title">Controle Remoto</div>
+    <div class="sub">Gemeo Digital — Porto Santos</div>
+  </div>
+</header>
+
+<!-- Canal ntfy.sh -->
+<div class="channel-row">
+  <input id="channelInput" type="text" value="gemeo-ibi"
+         placeholder="Nome do canal" autocomplete="off"
+         autocorrect="off" autocapitalize="none" spellcheck="false">
+  <button class="btn-connect" onclick="connect()">Conectar</button>
+</div>
+<div id="status">Configure o canal e toque em Conectar</div>
+
+<!-- Navegacao -->
+<h2>Navegacao</h2>
+<div class="grid-3">
+  <button class="cmd-btn" onclick="send('porto')">Porto</button>
+  <button class="cmd-btn" onclick="send('tecon')">Tecon</button>
+  <button class="cmd-btn" onclick="send('btp')">BTP</button>
+  <button class="cmd-btn" onclick="send('alemoa')">Alemoa</button>
+  <button class="cmd-btn" onclick="send('canal')">Canal</button>
+  <button class="cmd-btn" onclick="send('tunel')">Tunel</button>
+  <button class="cmd-btn full" onclick="send('centro')">Centro</button>
+</div>
+
+<!-- Camadas -->
+<h2>Camadas</h2>
+<div class="grid-2">
+  <button class="cmd-btn layer" onclick="send('navios')">Navios simulados</button>
+  <button class="cmd-btn layer" onclick="send('ais')">Navios AIS</button>
+  <button class="cmd-btn layer" onclick="send('ruas')">Ruas</button>
+  <button class="cmd-btn layer" onclick="send('mapa 3d')">Mapa 3D</button>
+  <button class="cmd-btn layer" onclick="send('sombras')">Sombras</button>
+  <button class="cmd-btn layer" onclick="send('labels')">Labels</button>
+</div>
+
+<!-- Comando livre -->
+<h2>Comando livre</h2>
+<div class="custom-row">
+  <input id="customInput" type="text"
+         placeholder="Ex: mostrar navios, ir para tecon..."
+         enterkeyhint="send">
+  <button class="btn-send" onclick="sendCustom()">Enviar</button>
+</div>
+<div id="feedback"></div>
+
+<footer>
+  Canal: ntfy.sh/<span id="channelDisplay">—</span><br>
+  <a href="https://ibi-observatorio.github.io/GemeoDigital-PortoSantos/" target="_blank">
+    Abrir mapa
+  </a>
+</footer>
+
+<script>
+let channelName = '';
+
+function connect() {
+  const raw = document.getElementById('channelInput').value.trim();
+  channelName = (raw || 'gemeo-ibi').toLowerCase().replace(/\s+/g, '-');
+  document.getElementById('channelDisplay').textContent = channelName;
+  const st = document.getElementById('status');
+  st.textContent = 'Canal "' + channelName + '" pronto — toque um botao para enviar';
+  st.className = 'ok';
+}
+
+async function send(cmd) {
+  if (!channelName) { alert('Configure o canal primeiro.'); return; }
+  const fb = document.getElementById('feedback');
+  try {
+    const res = await fetch('https://ntfy.sh/' + channelName, {
+      method: 'POST',
+      body: cmd,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' }
+    });
+    if (res.ok) {
+      fb.textContent = 'Enviado: "' + cmd + '"';
+      setTimeout(() => { fb.textContent = ''; }, 2000);
+    } else {
+      fb.textContent = 'Erro ao enviar (status ' + res.status + ')';
+    }
+  } catch(e) {
+    fb.textContent = 'Sem conexao com a internet';
+  }
+}
+
+function sendCustom() {
+  const input = document.getElementById('customInput');
+  const v = input.value.trim();
+  if (v) { send(v); input.value = ''; }
+}
+
+// Enviar com Enter no campo de texto
+document.getElementById('customInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') sendCustom();
+});
+
+// Conectar automaticamente ao carregar se ja tem valor
+window.addEventListener('load', function() {
+  const ch = document.getElementById('channelInput').value.trim();
+  if (ch) connect();
+});
+</script>
+</body>
+</html>
