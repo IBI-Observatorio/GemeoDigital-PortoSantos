@@ -55,6 +55,9 @@
       cursor: pointer; text-align: center;
       transition: background .1s, border-color .1s;
       line-height: 1.2;
+      touch-action: manipulation;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     .cmd-btn:active {
       background: rgba(56,189,248,.18);
@@ -88,6 +91,9 @@
       color: #94a3b8; cursor: pointer; display: inline-flex;
       align-items: center; justify-content: center;
       transition: background .15s, border-color .15s, color .15s;
+      touch-action: manipulation;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
     }
     #micBtn.listening {
       background: #7f1d1d; border-color: #f87171; color: #f87171;
