@@ -2289,21 +2289,33 @@ function connectRemote() {
 
   remoteSource = new EventSource('https://ntfy.sh/' + ch + '/sse');
 
-  remoteSource.addEventListener('message', function(e) {
+  remoteSource.onmessage = function(e) {
+    console.log('[REMOTO] recebido:', e.data);
     try {
       const data = JSON.parse(e.data);
-      if (data.message) processVoiceCommand(data.message);
-    } catch(err) {}
+      if (data.event === 'message' && data.message) {
+        processVoiceCommand(data.message);
+      }
+    } catch(err) {
+      console.error('[REMOTO] erro ao processar:', err);
+    }
+  };
+
+  // ntfy.sh envia keepalive e open como eventos nomeados separados
+  remoteSource.addEventListener('keepalive', function() {
+    console.log('[REMOTO] keepalive');
   });
 
   remoteSource.onopen = function() {
     st.textContent = 'Remoto ativo: ' + ch;
     st.className = 'connected';
+    console.log('[REMOTO] conectado ao canal:', ch);
   };
 
   remoteSource.onerror = function() {
     st.textContent = 'Erro — verifique a conexao';
     st.className = '';
+    console.warn('[REMOTO] erro na conexao SSE');
   };
 }
 // ── END REMOTE CONTROL ─────────────────────────────────────────────────────
