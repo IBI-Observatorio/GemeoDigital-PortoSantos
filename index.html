@@ -541,9 +541,18 @@ async function initMap(cesiumToken, googleKey, aisKey) {
   buildTunnel();
   tunnelEntities.forEach(e => { e.show = true; });
 
-  // Posicionar câmera — usar flyTo com delay para garantir que as tiles carregaram
-  // O setView imediato fica deslocado porque o terreno ainda não carregou
-  setTimeout(() => { flyTo('tunel'); }, 2000);
+  // Posicionar câmera — flyTo com delay para tiles carregarem
+  setTimeout(() => {
+    flyTo('tunel');
+    // Após centralizar, zoom in com mais inclinação
+    setTimeout(() => {
+      viewer.camera.flyTo({
+        destination: Cesium.Cartesian3.fromDegrees(-46.2920, -23.9675, 600),
+        orientation: { heading: Cesium.Math.toRadians(320), pitch: Cesium.Math.toRadians(-20), roll: 0 },
+        duration: 2,
+      });
+    }, 3500);
+  }, 2000);
 
   // Mostrar UI
   document.getElementById('controls').style.display = 'block';
