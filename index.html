@@ -2264,6 +2264,12 @@ const VOICE_COMMANDS = [
   { patterns: ['fechar emprego', 'fechar painel de emprego'],
     action: () => closeEmpregoPanel() },
 
+  // ── Demurrage ──
+  { patterns: ['demurrage', 'sobreestadia', 'sobrestadia', 'quanto de demurrage'],
+    action: () => showDemurragePanel() },
+  { patterns: ['fechar demurrage', 'fechar painel de demurrage'],
+    action: () => closeDemurragePanel() },
+
   // Localização
   { patterns: ['ir para porto', 'ver porto', 'porto'],             action: () => voiceFlyTo('porto') },
   { patterns: ['ir para tecon', 'ver tecon', 'tecon'],             action: () => voiceFlyTo('tecon') },
@@ -2789,12 +2795,10 @@ async function aiSend() {
 
     var ql = q.toLowerCase();
     if (ql.includes('demurrage') || ql.includes('sobreestadia') || ql.includes('sobrestadia')) {
-      var demResp = await fetch(SCRAPER_BASE + '/api/demurrage').then(r => r.json()).catch(() => null);
-      if (demResp) {
-        aiRemoveMsg(thinkEl);
-        aiAddMsg('response', aiFormatDemurrage(demResp));
-        return;
-      }
+      aiRemoveMsg(thinkEl);
+      aiAddMsg('response', 'Abrindo painel de demurrage...');
+      showDemurragePanel();
+      return;
     }
 
     const answer = aiGenerateAnswer(q, atracResp, fundResp);
@@ -2979,12 +2983,10 @@ async function aiProcessQuestion(q) {
 
     var ql2 = q.toLowerCase();
     if (ql2.includes('demurrage') || ql2.includes('sobreestadia') || ql2.includes('sobrestadia')) {
-      var demResp2 = await fetch(SCRAPER_BASE + '/api/demurrage').then(function(r) { return r.json(); }).catch(function() { return null; });
-      if (demResp2) {
-        aiRemoveMsg(thinkEl);
-        aiAddMsg('response', aiFormatDemurrage(demResp2));
-        return;
-      }
+      aiRemoveMsg(thinkEl);
+      aiAddMsg('response', 'Abrindo painel de demurrage...');
+      showDemurragePanel();
+      return;
     }
 
     var answer = aiGenerateAnswer(q, atracResp, fundResp);
@@ -3736,6 +3738,152 @@ function closeEmpregoPanel() {
 // ============================================================
 </script>
 
+<!-- ═══════════════════════════════════════════════════
+     PAINEL DE DEMURRAGE
+     ═══════════════════════════════════════════════════ -->
+<style>
+#demurrage-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 7950; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+}
+#demurrage-card {
+  pointer-events: all;
+  background: rgba(10, 20, 40, 0.97);
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 16px; padding: 24px 28px;
+  min-width: 460px; max-width: 600px; max-height: 85vh; overflow-y: auto;
+  box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(245,158,11,0.1);
+  display: none; font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #e2e8f0;
+  animation: dmSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  scrollbar-width: thin; scrollbar-color: rgba(245,158,11,0.3) transparent;
+}
+#demurrage-card::-webkit-scrollbar { width: 4px; }
+#demurrage-card::-webkit-scrollbar-thumb { background: rgba(245,158,11,0.3); border-radius: 2px; }
+@keyframes dmSlideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.dm-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.dm-source { font-size: 10px; color: #f59e0b; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.dm-close {
+  background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.3);
+  color: #f59e0b; border-radius: 8px; padding: 6px 14px; font-size: 12px;
+  cursor: pointer; font-weight: 600;
+}
+.dm-close:hover { background: rgba(245,158,11,0.25); }
+.dm-title { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.dm-subtitle { font-size: 11px; color: #64748b; margin-bottom: 18px; }
+.dm-big { text-align: center; margin-bottom: 20px; }
+.dm-big .num { font-size: 36px; font-weight: 800; color: #f59e0b; letter-spacing: -1px; }
+.dm-big .label { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+.dm-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 18px; }
+.dm-cell {
+  background: rgba(245,158,11,0.06); border: 1px solid rgba(245,158,11,0.12);
+  border-radius: 10px; padding: 12px; text-align: center;
+}
+.dm-cell .val { font-size: 18px; font-weight: 700; color: #f59e0b; }
+.dm-cell .lbl { font-size: 10px; color: #94a3b8; margin-top: 4px; line-height: 1.3; }
+.dm-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 14px; }
+.dm-table th { text-align: left; color: #64748b; font-weight: 600; padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 10px; text-transform: uppercase; }
+.dm-table td { padding: 6px 8px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.dm-table tr:hover { background: rgba(245,158,11,0.05); }
+.dm-bar { height: 6px; border-radius: 3px; background: rgba(245,158,11,0.15); margin-top: 4px; }
+.dm-bar-fill { height: 100%; border-radius: 3px; background: #f59e0b; transition: width 0.8s ease; }
+.dm-section-title { font-size: 12px; font-weight: 700; color: #f59e0b; margin: 16px 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+.dm-footer { font-size: 10px; color: #475569; text-align: center; margin-top: 14px; }
+</style>
+
+<div id="demurrage-overlay">
+  <div id="demurrage-card">
+    <div class="dm-header">
+      <div class="dm-source">💰 Demurrage — Tempo Real</div>
+      <button class="dm-close" onclick="closeDemurragePanel()">✕ Fechar</button>
+    </div>
+    <div class="dm-title">Demurrage Estimado — Porto de Santos</div>
+    <div class="dm-subtitle" id="dm-timestamp"></div>
+    <div class="dm-big">
+      <div class="num" id="dm-total">—</div>
+      <div class="label">demurrage total estimado</div>
+    </div>
+    <div class="dm-grid">
+      <div class="dm-cell"><div class="val" id="dm-navios">—</div><div class="lbl">Navios<br>programados</div></div>
+      <div class="dm-cell"><div class="val" id="dm-dias">—</div><div class="lbl">Espera<br>média (dias)</div></div>
+      <div class="dm-cell"><div class="val" id="dm-taxa">—</div><div class="lbl">Taxa diária<br>USD/dia</div></div>
+    </div>
+    <div class="dm-section-title">Por tipo de carga</div>
+    <table class="dm-table">
+      <thead><tr><th>Carga</th><th style="text-align:right">Navios</th><th style="text-align:right">Dias méd.</th><th style="text-align:right">Demurrage</th></tr></thead>
+      <tbody id="dm-cargo-body"></tbody>
+    </table>
+    <div class="dm-section-title">Top 5 — Maior demurrage</div>
+    <table class="dm-table">
+      <thead><tr><th>Navio</th><th>Carga</th><th style="text-align:right">Dias</th><th style="text-align:right">USD</th></tr></thead>
+      <tbody id="dm-top5-body"></tbody>
+    </table>
+    <div class="dm-footer">Taxa proxy Panamax ~75.000 DWT · Fonte: APS / Scraper IBI</div>
+  </div>
+</div>
+
+<script>
+async function showDemurragePanel() {
+  var card = document.getElementById('demurrage-card');
+  card.style.display = 'block';
+  card.style.animation = 'none';
+  card.offsetHeight;
+  card.style.animation = '';
+
+  document.getElementById('dm-total').textContent = 'Calculando...';
+
+  try {
+    var resp = await fetch(SCRAPER_BASE + '/api/demurrage');
+    var d = await resp.json();
+
+    document.getElementById('dm-timestamp').textContent =
+      'Calculado em: ' + (d.calculado_em || '').substring(0,16).replace('T',' ') + ' UTC';
+
+    var totalEl = document.getElementById('dm-total');
+    var target = d.total_demurrage_usd || 0;
+    var start = performance.now();
+    (function step(now) {
+      var p = Math.min((now - start) / 1500, 1);
+      var ease = 1 - Math.pow(1 - p, 3);
+      totalEl.textContent = 'USD ' + Math.round(target * ease).toLocaleString('en-US');
+      if (p < 1) requestAnimationFrame(step);
+    })(start);
+
+    document.getElementById('dm-navios').textContent = d.total_navios || 0;
+    document.getElementById('dm-dias').textContent = (d.media_dias_espera || 0) + ' dias';
+    document.getElementById('dm-taxa').textContent = (d.taxa_diaria_usd || 29800).toLocaleString('en-US');
+
+    var maxDem = Math.max.apply(null, (d.por_carga || []).map(function(c) { return c.demurrage_usd; })) || 1;
+    document.getElementById('dm-cargo-body').innerHTML = (d.por_carga || []).slice(0, 10).map(function(c) {
+      var pct = Math.round(c.demurrage_usd / maxDem * 100);
+      return '<tr><td>' + c.carga +
+        '<div class="dm-bar"><div class="dm-bar-fill" style="width:' + pct + '%"></div></div></td>' +
+        '<td style="text-align:right">' + c.navios + '</td>' +
+        '<td style="text-align:right">' + c.dias_medio + '</td>' +
+        '<td style="text-align:right"><b>USD ' + c.demurrage_usd.toLocaleString('en-US') + '</b></td></tr>';
+    }).join('');
+
+    document.getElementById('dm-top5-body').innerHTML = (d.navios || []).slice(0, 5).map(function(s) {
+      return '<tr><td><b>' + s.navio + '</b></td>' +
+        '<td>' + (s.carga || '—') + '</td>' +
+        '<td style="text-align:right">' + s.dias_espera + '</td>' +
+        '<td style="text-align:right;color:#f59e0b"><b>USD ' + s.demurrage_usd.toLocaleString('en-US') + '</b></td></tr>';
+    }).join('');
+
+  } catch(e) {
+    document.getElementById('dm-total').textContent = 'Erro ao carregar';
+    console.warn('Demurrage erro:', e);
+  }
+}
+
+function closeDemurragePanel() {
+  document.getElementById('demurrage-card').style.display = 'none';
+}
+</script>
 
 <!-- ═══════════════════════════════════════════════════
      PAINEL DE NAVIOS — IBI Observatório
