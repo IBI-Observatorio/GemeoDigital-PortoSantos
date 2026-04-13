@@ -2800,17 +2800,31 @@ async function aiSend() {
       return;
     }
 
-    const resp = await fetch(SCRAPER_BASE + '/api/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q }),
-    });
-    const data = await resp.json();
+    var aiAnswer = null;
+    try {
+      const resp = await fetch(SCRAPER_BASE + '/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q }),
+      });
+      const data = await resp.json();
+      if (data.answer) aiAnswer = data.answer.replace(/\n/g, '<br>');
+    } catch(ignored) {}
+
+    if (!aiAnswer) {
+      // Fallback: respostas hardcoded
+      const [atracResp, fundResp] = await Promise.all([
+        fetch(SCRAPER_BASE + '/api/atracados').then(r => r.json()).catch(() => ({ships:[],total:0})),
+        fetch(SCRAPER_BASE + '/api/fundeados').then(r => r.json()).catch(() => ({ships:[],total:0})),
+      ]);
+      aiAnswer = aiGenerateAnswer(q, atracResp, fundResp);
+    }
+
     aiRemoveMsg(thinkEl);
-    aiAddMsg('response', (data.answer || data.error || 'Sem resposta').replace(/\n/g, '<br>'));
+    aiAddMsg('response', aiAnswer);
   } catch (e) {
     aiRemoveMsg(thinkEl);
-    aiAddMsg('response', 'Erro ao consultar IA: ' + e.message);
+    aiAddMsg('response', 'Erro ao consultar dados: ' + e.message);
   }
 }
 
@@ -2990,14 +3004,25 @@ async function aiProcessQuestion(q) {
       return;
     }
 
-    var resp2 = await fetch(SCRAPER_BASE + '/api/ask', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ question: q }),
-    });
-    var data2 = await resp2.json();
+    var aiAns2 = null;
+    try {
+      var resp2 = await fetch(SCRAPER_BASE + '/api/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: q }),
+      });
+      var data2 = await resp2.json();
+      if (data2.answer) aiAns2 = data2.answer.replace(/\n/g, '<br>');
+    } catch(ignored) {}
+
+    if (!aiAns2) {
+      var ar = await fetch(SCRAPER_BASE + '/api/atracados').then(function(r){return r.json();}).catch(function(){return {ships:[],total:0};});
+      var fr = await fetch(SCRAPER_BASE + '/api/fundeados').then(function(r){return r.json();}).catch(function(){return {ships:[],total:0};});
+      aiAns2 = aiGenerateAnswer(q, ar, fr);
+    }
+
     aiRemoveMsg(thinkEl);
-    aiAddMsg('response', (data2.answer || data2.error || 'Sem resposta').replace(/\n/g, '<br>'));
+    aiAddMsg('response', aiAns2);
   } catch(e) {
     aiRemoveMsg(thinkEl);
     aiAddMsg('response', 'Erro ao consultar dados: ' + e.message);
