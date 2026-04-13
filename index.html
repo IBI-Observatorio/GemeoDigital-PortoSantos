@@ -2792,11 +2792,6 @@ async function aiSend() {
   }
 
   try {
-    const [atracResp, fundResp] = await Promise.all([
-      fetch(SCRAPER_BASE + '/api/atracados').then(r => r.json()).catch(() => ({ships:[],total:0})),
-      fetch(SCRAPER_BASE + '/api/fundeados').then(r => r.json()).catch(() => ({ships:[],total:0})),
-    ]);
-
     var ql = q.toLowerCase();
     if (ql.includes('demurrage') || ql.includes('sobreestadia') || ql.includes('sobrestadia')) {
       aiRemoveMsg(thinkEl);
@@ -2805,12 +2800,17 @@ async function aiSend() {
       return;
     }
 
-    const answer = aiGenerateAnswer(q, atracResp, fundResp);
+    const resp = await fetch(SCRAPER_BASE + '/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q }),
+    });
+    const data = await resp.json();
     aiRemoveMsg(thinkEl);
-    aiAddMsg('response', answer);
+    aiAddMsg('response', (data.answer || data.error || 'Sem resposta').replace(/\n/g, '<br>'));
   } catch (e) {
     aiRemoveMsg(thinkEl);
-    aiAddMsg('response', 'Erro ao consultar dados: ' + e.message);
+    aiAddMsg('response', 'Erro ao consultar IA: ' + e.message);
   }
 }
 
@@ -2980,11 +2980,8 @@ async function aiProcessQuestion(q) {
     await new Promise(function(r) { setTimeout(r, 800 + Math.random() * 600); });
   }
 
-  // Buscar dados e responder
+  // Buscar resposta da IA
   try {
-    var atracResp = await fetch(SCRAPER_BASE + '/api/atracados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
-    var fundResp = await fetch(SCRAPER_BASE + '/api/fundeados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
-
     var ql2 = q.toLowerCase();
     if (ql2.includes('demurrage') || ql2.includes('sobreestadia') || ql2.includes('sobrestadia')) {
       aiRemoveMsg(thinkEl);
@@ -2993,9 +2990,14 @@ async function aiProcessQuestion(q) {
       return;
     }
 
-    var answer = aiGenerateAnswer(q, atracResp, fundResp);
+    var resp2 = await fetch(SCRAPER_BASE + '/api/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q }),
+    });
+    var data2 = await resp2.json();
     aiRemoveMsg(thinkEl);
-    aiAddMsg('response', answer);
+    aiAddMsg('response', (data2.answer || data2.error || 'Sem resposta').replace(/\n/g, '<br>'));
   } catch(e) {
     aiRemoveMsg(thinkEl);
     aiAddMsg('response', 'Erro ao consultar dados: ' + e.message);

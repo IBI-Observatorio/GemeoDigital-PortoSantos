@@ -4,16 +4,19 @@ Faz scraping das páginas oficiais da SPA de tempos em tempos e serve
 os dados em JSON via HTTP local para o index.html consumir.
 
 Uso:
-  pip install requests beautifulsoup4
+  pip install requests beautifulsoup4 anthropic
   python scraper.py
 
 Endpoints:
-  GET http://localhost:8080/api/atracados   → JSON com navios atracados
-  GET http://localhost:8080/api/fundeados   → JSON com navios fundeados
-  GET http://localhost:8080/api/status       → status do scraper
+  GET  http://localhost:8080/api/atracados   → JSON com navios atracados
+  GET  http://localhost:8080/api/fundeados   → JSON com navios fundeados
+  GET  http://localhost:8080/api/demurrage   → JSON com cálculo de demurrage
+  POST http://localhost:8080/api/ask         → Pergunta ao Gêmeo AI (Claude)
+  GET  http://localhost:8080/api/status      → status do scraper
 """
 
 import json
+import os
 import re
 import threading
 import time
@@ -28,13 +31,20 @@ try:
 except ImportError:
     HAS_DEPS = False
 
+try:
+    import anthropic
+    HAS_ANTHROPIC = True
+except ImportError:
+    HAS_ANTHROPIC = False
+
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
+
 URL_ATRACADOS = 'https://www.portodesantos.com.br/informacoes-operacionais/operacoes-portuarias/navegacao-e-movimento-de-navios/atracados-porto-terminais/'
 URL_FUNDEADOS = 'https://www.portodesantos.com.br/informacoes-operacionais/operacoes-portuarias/navegacao-e-movimento-de-navios/navios-fundeados/'
 
 DEMURRAGE_RATE = 29_800  # USD/dia (proxy Panamax ~75.000 DWT)
 COMBUSTIVEIS = {"GASOLINA COMUM", "OLEO DIESEL", "GAS LIQUEFEITO", "OLEO COMBUSTIVEL"}
 NAVIOS_EXCLUIR = {"GUAJARA", "TS 4"}
-import os
 INTERVAL_SECONDS = 10 * 60  # 10 minutos
 PORT = int(os.environ.get('PORT', 8080))
 
@@ -281,6 +291,79 @@ def calc_demurrage(fundeados):
     }
 
 
+SYSTEM_PROMPT = """Você é o Gêmeo AI, assistente inteligente do Porto de Santos desenvolvido pelo Instituto Brasileiro de Infraestrutura (IBI).
+
+Você responde perguntas sobre:
+- Navios atracados e fundeados no Porto de Santos (dados em tempo real)
+- Demurrage estimado dos navios fundeados
+- Emprego marítimo e portuário na Baixada Santista (RAIS 2024 + CAGED 2025-2026)
+
+REGRAS:
+- Responda sempre em português do Brasil
+- Seja conciso e direto
+- Use dados numéricos quando disponíveis
+- Para emprego, use apenas PERCENTUAIS, nunca números absolutos de vínculos
+- Cite a fonte (RAIS 2024, CAGED 2025-2026, APS tempo real)
+- Se não souber, diga que não tem a informação
+
+DADOS DE EMPREGO (Relatório IBI — RAIS 2024):
+- Complexo Portuário: 4 municípios (Santos, Guarujá, Cubatão, São Vicente), 23 CNAEs
+- Santos concentra 96% dos vínculos
+- Gênero: 60,5% masculino / 39,5% feminino
+- Escolaridade: Médio Completo 45,7% | Superior Completo 34,4% | 85% com Médio+
+- Remuneração mediana: R$ 3.264 | Superior ganha 3,4x mais que Médio (+243%)
+- Faixa etária: 30-39 anos = 30% (maior) | 18-24 anos = 11,4% (baixa entrada jovens)
+- Evolução: 2021→2022 +11,7% | 2022→2023 +11,5% | 2023→2024 +0,2%
+- CAGED 2025-2026: saldo positivo em 13 de 14 meses
+- Por atividade: Serviços e Apoio 73,5% | Transporte 19,6% | Armazenagem 3,4% | Obras 2,7% | Operações Portuárias 0,8%
+- Remuneração por atividade: Op. Portuárias R$ 6.921 | Armazenagem R$ 3.820 | Obras R$ 3.727 | Serviços R$ 3.255 | Transporte R$ 3.096
+- Correlação escolaridade/renda: salto forte do Médio para Superior (+243%), não linear
+- Taxa demurrage: USD 29.800/dia (proxy Panamax ~75.000 DWT)
+"""
+
+
+def ask_claude(question, atracados, fundeados, demurrage_data):
+    """Envia pergunta ao Claude Haiku com contexto dos dados do porto."""
+    if not HAS_ANTHROPIC:
+        return 'Erro: biblioteca anthropic não instalada. pip install anthropic'
+
+    # Montar contexto com dados em tempo real
+    ctx_parts = []
+
+    if atracados:
+        ships_list = ', '.join(s['vessel_name'] + ' (' + s['berth'] + ', ' + (s.get('cargo','') or '—') + ')'
+                               for s in atracados[:30])
+        ctx_parts.append(f"NAVIOS ATRACADOS AGORA ({len(atracados)} total): {ships_list}")
+
+    if fundeados:
+        fund_list = ', '.join(s['vessel_name'] + ' (' + (s.get('cargo_type','') or '—') + ', ' + str(s.get('dias_espera','?')) + ' dias)'
+                              for s in fundeados[:20])
+        ctx_parts.append(f"NAVIOS FUNDEADOS AGORA ({len(fundeados)} total): {fund_list}")
+
+    if demurrage_data:
+        ctx_parts.append(f"DEMURRAGE TOTAL: USD {demurrage_data.get('total_demurrage_usd',0):,.0f} | "
+                        f"{demurrage_data.get('total_navios',0)} navios | "
+                        f"espera média {demurrage_data.get('media_dias_espera',0)} dias")
+        if demurrage_data.get('por_carga'):
+            cargo_lines = ', '.join(c['carga'] + ': ' + str(c['navios']) + ' navios USD ' + f"{c['demurrage_usd']:,}"
+                                    for c in demurrage_data['por_carga'][:5])
+            ctx_parts.append(f"DEMURRAGE POR CARGA: {cargo_lines}")
+
+    context = '\n'.join(ctx_parts)
+
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    message = client.messages.create(
+        model='claude-haiku-4-5-20251001',
+        max_tokens=1024,
+        system=SYSTEM_PROMPT,
+        messages=[
+            {'role': 'user', 'content': f"DADOS EM TEMPO REAL DO PORTO:\n{context}\n\nPERGUNTA DO USUÁRIO: {question}"}
+        ]
+    )
+
+    return message.content[0].text
+
+
 def scrape_loop():
     """Loop de scraping que roda em background."""
     while True:
@@ -357,11 +440,37 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._respond(404, json.dumps({'error': 'not found'}))
 
+    def do_POST(self):
+        path = urlparse(self.path).path
+
+        if path == '/api/ask':
+            content_length = int(self.headers.get('Content-Length', 0))
+            body = self.rfile.read(content_length).decode('utf-8')
+            try:
+                payload = json.loads(body)
+                question = payload.get('question', '').strip()
+                if not question:
+                    self._respond(400, json.dumps({'error': 'question is required'}))
+                    return
+
+                with lock:
+                    atracados = data_store['atracados'].get('ships', [])
+                    fundeados = data_store['fundeados'].get('ships', [])
+
+                demurrage_data = calc_demurrage(fundeados)
+                answer = ask_claude(question, atracados, fundeados, demurrage_data)
+
+                self._respond(200, json.dumps({'answer': answer}, ensure_ascii=False))
+            except Exception as e:
+                self._respond(500, json.dumps({'error': str(e)}, ensure_ascii=False))
+        else:
+            self._respond(404, json.dumps({'error': 'not found'}))
+
     def _respond(self, code, body):
         self.send_response(code)
         self.send_header('Content-Type', 'application/json; charset=utf-8')
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Cache-Control', 'no-cache')
         self.end_headers()
         self.wfile.write(body.encode('utf-8'))
