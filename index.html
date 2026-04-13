@@ -3422,34 +3422,32 @@ const TEMPLATES = {
 
   // ── TOTAL DE EMPREGOS ─────────────────────────────────────
   total: {
-    query: 'Quantos empregos tem o Porto de Santos?',
-    title: 'Estoque de Vínculos Formais Ativos — Complexo Portuário',
+    query: 'Qual a evolução do emprego no Porto de Santos?',
+    title: 'Evolução do Emprego — Complexo Portuário',
     render: () => `
       <div class="ep-stat-big">
-        <div class="num" id="ep-count-main">0</div>
-        <div class="label">vínculos formais ativos (RAIS 2024)</div>
+        <div class="num" style="font-size:28px">Crescimento 2021–2024</div>
+        <div class="label">Setor marítimo e portuário — Baixada Santista (RAIS)</div>
       </div>
       <div class="ep-grid cols3">
         <div class="ep-cell">
-          <div class="c-val" style="color:#38bdf8">273.521</div>
-          <div class="c-lbl">2021<br>Base</div>
+          <div class="c-val" style="color:#38bdf8">+11,7%</div>
+          <div class="c-lbl">2021 → 2022</div>
         </div>
         <div class="ep-cell">
-          <div class="c-val" style="color:#38bdf8">305.541</div>
-          <div class="c-lbl">2022<br>+11,7%</div>
+          <div class="c-val" style="color:#38bdf8">+11,5%</div>
+          <div class="c-lbl">2022 → 2023</div>
         </div>
         <div class="ep-cell">
-          <div class="c-val" style="color:#f4a922">341.405</div>
-          <div class="c-lbl">2024<br>Atual</div>
+          <div class="c-val" style="color:#f4a922">+0,2%</div>
+          <div class="c-lbl">2023 → 2024<br>Estabilização</div>
         </div>
       </div>
       <div style="font-size:11px;color:#64748b;text-align:center">
         Santos concentra 96% dos vínculos — 4 municípios, 23 CNAEs portuários
       </div>
     `,
-    afterRender: () => {
-      animateCount(document.getElementById('ep-count-main'), 341405);
-    }
+    afterRender: () => {}
   },
 
   // ── GÊNERO ────────────────────────────────────────────────
@@ -3640,12 +3638,12 @@ const TEMPLATES = {
     render: () => `
       <div class="ep-grid cols3" style="margin-bottom:14px">
         <div class="ep-cell">
-          <div class="c-val" style="color:#f4a922" id="ep-c-total">0</div>
-          <div class="c-lbl">vínculos<br>formais (2024)</div>
+          <div class="c-val" style="color:#f4a922">96%</div>
+          <div class="c-lbl">concentrados<br>em Santos</div>
         </div>
         <div class="ep-cell">
-          <div class="c-val" style="color:#22c55e">+22.910</div>
-          <div class="c-lbl">novos postos<br>2025–2026</div>
+          <div class="c-val" style="color:#22c55e">13/14</div>
+          <div class="c-lbl">meses com saldo<br>positivo (CAGED)</div>
         </div>
         <div class="ep-cell">
           <div class="c-val" style="color:#38bdf8">R$ 3.264</div>
@@ -3654,21 +3652,21 @@ const TEMPLATES = {
       </div>
       <div class="ep-bar-row">
         <div class="ep-bar-label">
-          <span>👨 Homens 62%</span>
-          <span>👩 Mulheres 27%</span>
+          <span>👨 Homens 60,5%</span>
+          <span>👩 Mulheres 39,5%</span>
         </div>
         <div class="ep-bar-track">
-          <div class="ep-bar-fill" data-w="62" style="background:#38bdf8;width:0%">62%</div>
-          <div class="ep-bar-fill" data-w="27.3" style="background:#f472b6;width:0%">27%</div>
+          <div class="ep-bar-fill" data-w="60.5" style="background:#38bdf8;width:0%">60,5%</div>
+          <div class="ep-bar-fill" data-w="39.5" style="background:#f472b6;width:0%">39,5%</div>
         </div>
       </div>
       <div class="ep-grid" style="margin-top:12px">
         <div class="ep-cell">
           <div class="c-val" style="color:#38bdf8">30–39 anos</div>
-          <div class="c-lbl">faixa etária<br>dominante (23%)</div>
+          <div class="c-lbl">faixa etária<br>dominante (30%)</div>
         </div>
         <div class="ep-cell">
-          <div class="c-val" style="color:#f4a922">34,7%</div>
+          <div class="c-val" style="color:#f4a922">45,7%</div>
           <div class="c-lbl">Ensino Médio<br>escolaridade mais comum</div>
         </div>
       </div>
@@ -3677,7 +3675,6 @@ const TEMPLATES = {
       </div>
     `,
     afterRender: () => {
-      animateCount(document.getElementById('ep-c-total'), 341405);
       animateBars();
     }
   }
