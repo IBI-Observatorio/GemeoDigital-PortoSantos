@@ -1081,7 +1081,7 @@ function flyTo(location) {
     alemoa: { dest: [-46.3680, -23.9170, 500],   heading: 160, pitch: -25 },
     canal:  { dest: [-46.2910, -23.9750, 800],   heading: 340, pitch: -20 },
     ecoporto: { dest: [-46.3380, -23.9258, 500], heading: 250, pitch: -25 },
-    fundeio:  { dest: [-46.3456, -23.9892, 5000], heading: 0, pitch: -45 },
+    fundeio:  { dest: [-46.3664, -24.0725, 5000], heading: 0, pitch: -45 },
     tunel:  { dest: [-46.2920, -23.9675, 1500],   heading: 320, pitch: -35 },
     centro: { dest: [-46.3282, -23.9607, 1000],  heading: 0,   pitch: -35 },
   };
@@ -2624,7 +2624,7 @@ function createSPAMarkers(ships) {
 //  FUNDEADOS — Dados em tempo real via scraper local
 // ============================================================
 const FUNDEADOS_API = SCRAPER_BASE + '/api/fundeados';
-const FUNDEIO_CENTER = { lat: -23.98917, lon: -46.34556 };
+const FUNDEIO_CENTER = { lat: -24.0725, lon: -46.3664 };
 let fundeadosEntities = [];
 let fundeadosLoaded = false;
 
@@ -2787,6 +2787,16 @@ async function aiSend() {
       fetch(SCRAPER_BASE + '/api/fundeados').then(r => r.json()).catch(() => ({ships:[],total:0})),
     ]);
 
+    var ql = q.toLowerCase();
+    if (ql.includes('demurrage') || ql.includes('sobreestadia') || ql.includes('sobrestadia')) {
+      var demResp = await fetch(SCRAPER_BASE + '/api/demurrage').then(r => r.json()).catch(() => null);
+      if (demResp) {
+        aiRemoveMsg(thinkEl);
+        aiAddMsg('response', aiFormatDemurrage(demResp));
+        return;
+      }
+    }
+
     const answer = aiGenerateAnswer(q, atracResp, fundResp);
     aiRemoveMsg(thinkEl);
     aiAddMsg('response', answer);
@@ -2877,45 +2887,64 @@ function aiGenerateAnswer(q, atrac, fund) {
   // ── GÊNERO / MULHERES / HOMENS — checar ANTES de emprego (contém "trabalh") ──
   if (ql.includes('mulher') || ql.includes('feminin')) {
     if (ql.includes('percentual') || ql.includes('percent') || ql.includes('quantas') || ql.includes('qual'))
-      return 'As mulheres representam <b>39,5%</b> da força de trabalho marítimo e portuário do Complexo de Santos, com <b>134.799 vínculos formais</b> (RAIS 2024).';
-    return 'A participação feminina no setor portuário é de <b>39,5%</b> (<b>134.799</b> vínculos). Nos admitidos recentes (CAGED 2025-2026), mulheres representam 39,3% (92.429 admissões).';
+      return 'As mulheres representam <b>39,5%</b> da força de trabalho marítimo e portuário do Complexo de Santos (RAIS 2024).';
+    return 'A participação feminina no setor marítimo e portuário é de <b>39,5%</b> dos vínculos (RAIS 2024). Nos admitidos recentes (CAGED 2025-2026), mulheres representam <b>39,3%</b> das novas contratações.';
   }
 
   if (ql.includes('homens') || ql.includes('masculin')) {
     if (ql.includes('percentual') || ql.includes('percent') || ql.includes('quantos') || ql.includes('qual'))
-      return 'Os homens representam <b>60,5%</b> da força de trabalho marítimo e portuário, com <b>206.606 vínculos formais</b> (RAIS 2024).';
-    return 'A participação masculina no setor portuário é de <b>60,5%</b> (<b>206.606</b> vínculos). Nos admitidos recentes (CAGED 2025-2026), homens representam 60,7% (142.974 admissões).';
+      return 'Os homens representam <b>60,5%</b> da força de trabalho marítimo e portuário (RAIS 2024).';
+    return 'A participação masculina no setor marítimo e portuário é de <b>60,5%</b> dos vínculos (RAIS 2024). Nos admitidos recentes (CAGED 2025-2026), homens representam <b>60,7%</b> das novas contratações.';
   }
 
   if (ql.includes('gênero') || ql.includes('genero'))
-    return '<b>Distribuição por gênero</b> (RAIS 2024):<br>• Masculino: <b>206.606 (60,5%)</b><br>• Feminino: <b>134.799 (39,5%)</b><br><br>Nos admitidos recentes (CAGED 2025-2026): 60,7% masculino, 39,3% feminino.';
+    return '<b>Distribuição por gênero</b> (RAIS 2024):<br>• Masculino: <b>60,5%</b><br>• Feminino: <b>39,5%</b><br><br>Nos admitidos recentes (CAGED 2025-2026): 60,7% masculino, 39,3% feminino.';
+
+  // ── ESCOLARIDADE ESPECÍFICA — antes de emprego genérico ──
+  if (ql.includes('analfabet'))
+    return 'No setor marítimo e portuário da Baixada Santista, os trabalhadores analfabetos representam <b>0,3%</b> dos vínculos formais (RAIS 2024). A remuneração mediana desse grupo é de <b>R$ 1.959,90</b>.';
+
+  if (ql.includes('fundamental'))
+    return '<b>Trabalhadores com Ensino Fundamental</b> (RAIS 2024):<br>• Até 5ª incompleto: 1,4%<br>• 5ª completo: 1,3%<br>• 6ª a 9ª: 2,6%<br>• Fundamental completo: <b>5,8%</b><br><br>Total com fundamental ou menos: <b>11,4%</b> dos vínculos. Remuneração mediana: <b>R$ 2.290</b> (fund. completo).';
+
+  if (ql.includes('superior') && !ql.includes('incomplet'))
+    return '<b>Trabalhadores com Ensino Superior Completo</b> (RAIS 2024):<br>• Representam <b>34,4%</b> dos vínculos<br>• Remuneração mediana: <b>R$ 8.365</b><br>• Remuneração média: R$ 12.703<br><br>O prêmio salarial do Superior sobre o Médio é de <b>+243%</b> na mediana.';
+
+  if (ql.includes('mestrado') || ql.includes('doutorado') || ql.includes('pós-graduaç') || ql.includes('pos-graduac') || ql.includes('pós graduaç'))
+    return '<b>Pós-graduação no setor marítimo e portuário</b> (RAIS 2024):<br>• Pós-Graduação: 0,6% — mediana <b>R$ 19.024</b><br>• Mestrado: 0,2% — mediana <b>R$ 18.538</b><br><br>Remuneração média dos pós-graduados: <b>R$ 26.657</b>.';
+
+  if (ql.includes('escolaridade') || ql.includes('educaç') || ql.includes('educac') || ql.includes('formação') || ql.includes('formacao') || ql.includes('estudo'))
+  if ((ql.includes('relação') || ql.includes('relacao') || ql.includes('correlação') || ql.includes('correlacao')) && (ql.includes('renda') || ql.includes('salário') || ql.includes('salario') || ql.includes('escolaridade') || ql.includes('remuneraç') || ql.includes('remunerac')))
+    return 'Sim, há correlação forte e positiva — mas não é linear, é em escada com saltos bruscos.<br><br>O grande salto não é do fundamental para o médio (+5%) — é do médio para o superior (+241%). Isso significa que o ensino médio, por si só, não garante acesso a rendas significativamente maiores no setor marítimo e portuário. O divisor de águas real é a graduação.<br><br><b>ATENÇÃO: superior completo ganha 3,4× mais do que médio completo.</b>';
+
+    return '<b>Escolaridade dos trabalhadores</b> (RAIS 2024):<br>• Analfabeto: 0,3%<br>• Fundamental ou menos: 11,4%<br>• Médio Incompleto: 4,0%<br>• Médio Completo: <b>45,7%</b><br>• Superior Incompleto: 3,7%<br>• Superior Completo: <b>34,4%</b><br>• Pós-Graduação: 0,6%<br>• Mestrado: 0,2%<br><br><b>85%</b> possuem ao menos Ensino Médio completo.';
 
   // ── EMPREGO PORTUÁRIO (Relatório IBI — RAIS 2024 + CAGED 2025-2026) ──
   if (ql.includes('emprego') || ql.includes('trabalh') || ql.includes('vínculo') || ql.includes('vinculo')) {
     if (ql.includes('quantos') || ql.includes('total'))
-      return 'O Complexo Portuário de Santos possui <b>341.405 vínculos formais ativos</b> (RAIS 2024), em 23 CNAEs portuários e logísticos, nos municípios de Santos, Guarujá, Cubatão e São Vicente.<br><br>Evolução:<br>• 2021: 273.521<br>• 2022: 305.541 (+11,7%)<br>• 2023: 340.615 (+11,5%)<br>• 2024: 341.405 (+0,2%)';
+      return 'O Complexo Portuário de Santos abrange <b>23 CNAEs portuários e logísticos</b> em 4 municípios da Baixada Santista (RAIS 2024).<br><br>Evolução do estoque de vínculos:<br>• 2021 → 2022: <b>+11,7%</b><br>• 2022 → 2023: <b>+11,5%</b><br>• 2023 → 2024: <b>+0,2%</b> (estabilização)<br><br>Santos concentra <b>96%</b> dos vínculos.';
     if (ql.includes('criad') || ql.includes('novo') || ql.includes('caged') || ql.includes('saldo'))
-      return 'Pelo CAGED (jan/2025 a fev/2026), foram criados <b>+22.910 postos formais</b> no setor portuário da Baixada Santista.<br>• 2025: +17.777 (200.454 admissões, 182.677 desligamentos)<br>• 2026 (jan-fev): +5.133<br>Dos 14 meses, 13 tiveram saldo positivo. Único negativo: dez/2025 (-2.821).';
-    return '<b>341.405 vínculos formais</b> no Complexo Portuário (RAIS 2024). Santos concentra 96% (329.145). Pergunte sobre gênero, salário, escolaridade, faixa etária ou empregos criados.';
+      return 'Pelo CAGED (jan/2025 a fev/2026), o setor marítimo e portuário da Baixada Santista manteve <b>saldo positivo em 13 dos 14 meses</b>.<br><br>• 2025: saldo positivo consistente ao longo do ano<br>• 2026 (jan-fev): tendência mantida<br>• Único mês negativo: dez/2025<br><br>O setor segue gerando postos formais de forma contínua.';
+    return 'O Complexo Portuário de Santos abrange 23 CNAEs em 4 municípios. Santos concentra <b>96%</b> dos vínculos. Pergunte sobre gênero, salário, escolaridade, faixa etária ou empregos criados.';
   }
 
   if (ql.includes('salário') || ql.includes('salario') || ql.includes('remuneraç') || ql.includes('remunerac') || ql.includes('quanto ganha'))
-    return '<b>Remuneração no setor portuário</b> (RAIS 2024):<br>• Mediana geral: <b>R$ 3.264,03</b><br><br>Por escolaridade:<br>• Fundamental: R$ 2.290 (mediana)<br>• Médio Completo: R$ 2.436<br>• Superior Completo: <b>R$ 8.365</b> (+243% sobre Médio)<br>• Pós-Graduação: R$ 19.024<br><br>Por atividade:<br>• Operações Portuárias: R$ 6.921 (mediana)<br>• Armazenagem/Despacho: R$ 3.820<br>• Obras/Manutenção: R$ 3.727<br>• Serviços e Apoio: R$ 3.255<br>• Transporte: R$ 3.096';
+    return '<b>Remuneração no setor marítimo e portuário</b> (RAIS 2024):<br>• Mediana geral: <b>R$ 3.264,03</b><br><br>Por escolaridade:<br>• Fundamental: R$ 2.290 (mediana)<br>• Médio Completo: R$ 2.436<br>• Superior Completo: <b>R$ 8.365</b> (+243% sobre Médio)<br>• Pós-Graduação: R$ 19.024<br><br>Por atividade:<br>• Operações Portuárias: R$ 6.921 (mediana)<br>• Armazenagem/Despacho: R$ 3.820<br>• Obras/Manutenção: R$ 3.727<br>• Serviços e Apoio: R$ 3.255<br>• Transporte: R$ 3.096';
 
   if (ql.includes('escolaridade') || ql.includes('educaç') || ql.includes('educac') || ql.includes('formação') || ql.includes('formacao') || ql.includes('estudo'))
-    return '<b>Escolaridade dos trabalhadores portuários</b> (RAIS 2024):<br>• Médio Completo: <b>156.152 (45,7%)</b><br>• Superior Completo: <b>117.287 (34,4%)</b><br>• Superior Incompleto: 12.566 (3,7%)<br>• Fund. Completo: 19.834 (5,8%)<br>• Pós-Graduação: 2.066 (0,6%)<br>• Mestrado: 577 (0,2%)<br><br><b>85%</b> possuem ao menos Ensino Médio completo.';
+    return '<b>Escolaridade dos trabalhadores</b> (RAIS 2024):<br>• Médio Completo: <b>45,7%</b><br>• Superior Completo: <b>34,4%</b><br>• Superior Incompleto: 3,7%<br>• Fund. Completo: 5,8%<br>• Pós-Graduação: 0,6%<br>• Mestrado: 0,2%<br><br><b>85%</b> possuem ao menos Ensino Médio completo.';
 
   if (ql.includes('idade') || ql.includes('etári') || ql.includes('etari') || ql.includes('jovem') || ql.includes('jovens'))
-    return '<b>Faixa etária</b> (RAIS 2024):<br>• 18 a 24 anos: 38.911 (11,4%)<br>• 25 a 29 anos: 48.916 (14,3%)<br>• <b>30 a 39 anos: 102.515 (30,0%)</b> — maior faixa<br>• 40 a 49 anos: 85.624 (25,1%)<br>• 50 a 64 anos: 58.866 (17,2%)<br>• 65+ anos: 5.691 (1,7%)<br><br>Baixa entrada de jovens (18-24): ponto de atenção para programas de qualificação.';
+    return '<b>Faixa etária</b> (RAIS 2024):<br>• 18 a 24 anos: 11,4%<br>• 25 a 29 anos: 14,3%<br>• <b>30 a 39 anos: 30,0%</b> — maior faixa<br>• 40 a 49 anos: 25,1%<br>• 50 a 64 anos: 17,2%<br>• 65+ anos: 1,7%<br><br>Baixa entrada de jovens (18-24): ponto de atenção para programas de qualificação.';
 
   if (ql.includes('perfil completo') || ql.includes('perfil do trabalhador') || ql.includes('perfil geral'))
-    return '<b>Perfil do Trabalhador Portuário — Santos (RAIS 2024)</b><br><br>• <b>341.405</b> vínculos formais ativos<br>• <b>96%</b> concentrados em Santos<br>• <b>60,5%</b> masculino / 39,5% feminino<br>• <b>45,7%</b> com Ensino Médio Completo<br>• <b>34,4%</b> com Superior Completo<br>• Mediana salarial: <b>R$ 3.264</b><br>• Faixa etária predominante: <b>30-39 anos (30%)</b><br>• CAGED 2025-2026: <b>+22.910 postos criados</b><br><br>Fonte: Relatório IBI — Diagnóstico Preliminar (Abril/2026)';
+    return '<b>Perfil do Trabalhador Marítimo e Portuário — Baixada Santista (RAIS 2024)</b><br><br>• <b>96%</b> dos vínculos concentrados em Santos<br>• <b>60,5%</b> masculino / 39,5% feminino<br>• <b>45,7%</b> com Ensino Médio Completo<br>• <b>34,4%</b> com Superior Completo<br>• Mediana salarial: <b>R$ 3.264</b><br>• Faixa etária predominante: <b>30-39 anos (30%)</b><br>• CAGED 2025-2026: saldo positivo em 13 de 14 meses<br><br>Fonte: Relatório IBI — Diagnóstico Preliminar (Abril/2026)';
 
   if (ql.includes('município') || ql.includes('municipio') || ql.includes('cidade') || ql.includes('guarujá') || ql.includes('guaruja') || ql.includes('cubatão') || ql.includes('cubatao') || ql.includes('são vicente') || ql.includes('sao vicente'))
-    return '<b>Vínculos por município</b> (RAIS 2024):<br>• Santos: <b>329.145 (96,4%)</b><br>• Cubatão: 6.269 (1,8%)<br>• São Vicente: 5.347 (1,6%)<br>• Guarujá: 644 (0,2%)<br><br>Santos é o epicentro absoluto do emprego portuário na Baixada Santista.';
+    return '<b>Distribuição por município</b> (RAIS 2024):<br>• Santos: <b>96,4%</b><br>• Cubatão: 1,8%<br>• São Vicente: 1,6%<br>• Guarujá: 0,2%<br><br>Santos é o epicentro absoluto do emprego marítimo e portuário na Baixada Santista.';
 
   if (ql.includes('setor') || ql.includes('atividade') || ql.includes('cnae') || ql.includes('grupo'))
-    return '<b>Emprego por grupo de atividade</b> (RAIS 2024):<br>• Serviços e Apoio: <b>250.889 (73,5%)</b><br>• Transporte: 66.870 (19,6%)<br>• Armazenagem e Despacho: 11.758 (3,4%)<br>• Obras e Manutenção: 9.197 (2,7%)<br>• Operações Portuárias: 2.691 (0,8%)<br><br>CNAEs dominantes: Serviços de escritório (36,1%), Consultoria/segurança (21,6%), Transporte rodoviário interestadual (15,5%).';
+    return '<b>Emprego por grupo de atividade</b> (RAIS 2024):<br>• Serviços e Apoio: <b>73,5%</b><br>• Transporte: 19,6%<br>• Armazenagem e Despacho: 3,4%<br>• Obras e Manutenção: 2,7%<br>• Operações Portuárias: 0,8%<br><br>CNAEs dominantes: Serviços de escritório (36,1%), Consultoria/segurança (21,6%), Transporte rodoviário interestadual (15,5%).';
 
   return 'Porto de Santos agora: <b>' + ships.length + '</b> atracados, <b>' + fundeados.length + '</b> fundeados. Pergunte sobre terminais, navios, cargas, emprego, salário, escolaridade, gênero ou faixa etária.';
 }
@@ -2947,6 +2976,17 @@ async function aiProcessQuestion(q) {
   try {
     var atracResp = await fetch(SCRAPER_BASE + '/api/atracados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
     var fundResp = await fetch(SCRAPER_BASE + '/api/fundeados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
+
+    var ql2 = q.toLowerCase();
+    if (ql2.includes('demurrage') || ql2.includes('sobreestadia') || ql2.includes('sobrestadia')) {
+      var demResp2 = await fetch(SCRAPER_BASE + '/api/demurrage').then(function(r) { return r.json(); }).catch(function() { return null; });
+      if (demResp2) {
+        aiRemoveMsg(thinkEl);
+        aiAddMsg('response', aiFormatDemurrage(demResp2));
+        return;
+      }
+    }
+
     var answer = aiGenerateAnswer(q, atracResp, fundResp);
     aiRemoveMsg(thinkEl);
     aiAddMsg('response', answer);
@@ -2954,6 +2994,38 @@ async function aiProcessQuestion(q) {
     aiRemoveMsg(thinkEl);
     aiAddMsg('response', 'Erro ao consultar dados: ' + e.message);
   }
+}
+
+function aiFormatDemurrage(d) {
+  var totalUSD = d.total_demurrage_usd || 0;
+  var totalFmt = 'USD ' + totalUSD.toLocaleString('en-US');
+  var n = d.total_navios || 0;
+  var avgDias = d.media_dias_espera || 0;
+  var taxa = d.taxa_diaria_usd || 29800;
+
+  var html = '<b>💰 Demurrage — Porto de Santos</b><br>';
+  html += '<span style="font-size:11px;color:#94a3b8">Calculado em: ' + (d.calculado_em || '—').substring(0,16).replace('T',' ') + ' UTC</span><br><br>';
+  html += '• Total estimado: <b style="color:#f59e0b">' + totalFmt + '</b><br>';
+  html += '• Navios programados fundeados: <b>' + n + '</b><br>';
+  html += '• Espera média: <b>' + avgDias + ' dias</b><br>';
+  html += '• Taxa: USD ' + taxa.toLocaleString('en-US') + '/dia (Panamax)<br><br>';
+
+  if (d.por_carga && d.por_carga.length > 0) {
+    html += '<b>Por tipo de carga:</b><br>';
+    d.por_carga.slice(0, 8).forEach(function(c) {
+      html += '• ' + c.carga + ': <b>' + c.navios + '</b> navios, ' + c.dias_medio + ' dias méd., <b>USD ' + c.demurrage_usd.toLocaleString('en-US') + '</b><br>';
+    });
+  }
+
+  if (d.navios && d.navios.length > 0) {
+    html += '<br><b>Top 5 maiores demurrages:</b><br>';
+    d.navios.slice(0, 5).forEach(function(s) {
+      html += '• <b>' + s.navio + '</b> — ' + s.dias_espera + ' dias — USD ' + s.demurrage_usd.toLocaleString('en-US') + '<br>';
+    });
+  }
+
+  html += '<br><span style="font-size:10px;color:#64748b">Fonte: Scraper APS + cálculo proxy Panamax</span>';
+  return html;
 }
 
 </script>
@@ -3467,7 +3539,7 @@ const TEMPLATES = {
     render: () => `
       <div class="ep-stat-big" style="margin-bottom:16px">
         <div class="num" id="ep-sal-main">0</div>
-        <div class="label">remuneração mediana do setor portuário</div>
+        <div class="label">remuneração mediana do setor marítimo e portuário</div>
       </div>
       <table class="ep-table">
         <thead>

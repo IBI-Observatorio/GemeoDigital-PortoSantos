@@ -30,6 +30,10 @@ except ImportError:
 
 URL_ATRACADOS = 'https://www.portodesantos.com.br/informacoes-operacionais/operacoes-portuarias/navegacao-e-movimento-de-navios/atracados-porto-terminais/'
 URL_FUNDEADOS = 'https://www.portodesantos.com.br/informacoes-operacionais/operacoes-portuarias/navegacao-e-movimento-de-navios/navios-fundeados/'
+
+DEMURRAGE_RATE = 29_800  # USD/dia (proxy Panamax ~75.000 DWT)
+COMBUSTIVEIS = {"GASOLINA COMUM", "OLEO DIESEL", "GAS LIQUEFEITO", "OLEO COMBUSTIVEL"}
+NAVIOS_EXCLUIR = {"GUAJARA", "TS 4"}
 import os
 INTERVAL_SECONDS = 10 * 60  # 10 minutos
 PORT = int(os.environ.get('PORT', 8080))
@@ -199,6 +203,84 @@ def scrape_fundeados():
     return ships
 
 
+def calc_demurrage(fundeados):
+    """Calcula demurrage dos navios fundeados."""
+    now = datetime.now(timezone.utc)
+    results = []
+
+    for s in fundeados:
+        name = s.get('vessel_name', '').strip().upper()
+        if name in NAVIOS_EXCLUIR:
+            continue
+        cargo = s.get('cargo_type', '').strip().upper()
+        if cargo in COMBUSTIVEIS:
+            continue
+        if cargo == 'VEICULO' and s.get('navigation') == 'Cab':
+            continue
+        if not cargo and not s.get('operation'):
+            continue
+
+        arrival_str = s.get('arrival', '')
+        arrival = None
+        for fmt in ('%d/%m/%Y %H:%M:%S', '%Y-%m-%dT%H:%M:%S'):
+            try:
+                arrival = datetime.strptime(arrival_str, fmt).replace(tzinfo=timezone.utc)
+                break
+            except ValueError:
+                continue
+        if not arrival:
+            continue
+
+        wait_days = max((now - arrival).total_seconds() / 86400, 0)
+        demurrage = wait_days * DEMURRAGE_RATE
+
+        results.append({
+            'navio': s['vessel_name'],
+            'bandeira': s.get('flag', ''),
+            'carga': s.get('cargo_type', ''),
+            'tonelagem': s.get('weight_tons', 0),
+            'chegada': arrival_str,
+            'dias_espera': round(wait_days, 1),
+            'demurrage_usd': round(demurrage),
+        })
+
+    results.sort(key=lambda r: r['dias_espera'], reverse=True)
+
+    total_demurrage = sum(r['demurrage_usd'] for r in results)
+    total_dias = sum(r['dias_espera'] for r in results)
+    n = len(results)
+    avg_dias = round(total_dias / n, 1) if n else 0
+
+    by_cargo = {}
+    for r in results:
+        cargo = r['carga'] or 'SEM CARGA'
+        if cargo not in by_cargo:
+            by_cargo[cargo] = {'count': 0, 'demurrage': 0, 'dias': 0}
+        by_cargo[cargo]['count'] += 1
+        by_cargo[cargo]['demurrage'] += r['demurrage_usd']
+        by_cargo[cargo]['dias'] += r['dias_espera']
+
+    resumo_cargo = []
+    for cargo in sorted(by_cargo, key=lambda c: by_cargo[c]['demurrage'], reverse=True):
+        info = by_cargo[cargo]
+        resumo_cargo.append({
+            'carga': cargo,
+            'navios': info['count'],
+            'dias_medio': round(info['dias'] / info['count'], 1) if info['count'] else 0,
+            'demurrage_usd': info['demurrage'],
+        })
+
+    return {
+        'navios': results,
+        'total_navios': n,
+        'total_demurrage_usd': total_demurrage,
+        'media_dias_espera': avg_dias,
+        'taxa_diaria_usd': DEMURRAGE_RATE,
+        'por_carga': resumo_cargo,
+        'calculado_em': now.isoformat(),
+    }
+
+
 def scrape_loop():
     """Loop de scraping que roda em background."""
     while True:
@@ -251,6 +333,12 @@ class Handler(BaseHTTPRequestHandler):
             with lock:
                 body = json.dumps(data_store['fundeados'], ensure_ascii=False)
             self._respond(200, body)
+
+        elif path == '/api/demurrage':
+            with lock:
+                fundeados = data_store['fundeados'].get('ships', [])
+            demurrage = calc_demurrage(fundeados)
+            self._respond(200, json.dumps(demurrage, ensure_ascii=False))
 
         elif path == '/api/status':
             with lock:
