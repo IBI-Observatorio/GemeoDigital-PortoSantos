@@ -337,7 +337,9 @@ window.addEventListener('load', function() {
 });
 
 // ── GÊMEO AI ────────────────────────────────────────────
-const SCRAPER = 'http://localhost:8080';
+const SCRAPER = window.location.hostname === 'localhost'
+  ? 'http://localhost:8080'
+  : 'https://scraper-santos.up.railway.app';
 
 function aiMsg(type, text) {
   const chat = document.getElementById('ai-chat');

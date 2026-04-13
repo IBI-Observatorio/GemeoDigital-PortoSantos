@@ -2420,7 +2420,11 @@ function connectRemote() {
 // ============================================================
 //  ATRACADOS SPA — Dados em tempo real via scraper local
 // ============================================================
-const SPA_API = 'http://localhost:8080/api/atracados';
+// URL do scraper — Railway (público) com fallback para localhost (dev)
+const SCRAPER_BASE = window.location.hostname === 'localhost'
+  ? 'http://localhost:8080'
+  : 'https://scraper-santos.up.railway.app';
+const SPA_API = SCRAPER_BASE + '/api/atracados';
 const SPA_REFRESH_MS = 10 * 60 * 1000; // re-busca a cada 10min (acompanhando o scraper)
 let spaEntities = [];
 let spaLoaded = false;
@@ -2619,7 +2623,7 @@ function createSPAMarkers(ships) {
 // ============================================================
 //  FUNDEADOS — Dados em tempo real via scraper local
 // ============================================================
-const FUNDEADOS_API = 'http://localhost:8080/api/fundeados';
+const FUNDEADOS_API = SCRAPER_BASE + '/api/fundeados';
 const FUNDEIO_CENTER = { lat: -23.98917, lon: -46.34556 };
 let fundeadosEntities = [];
 let fundeadosLoaded = false;
@@ -2779,8 +2783,8 @@ async function aiSend() {
 
   try {
     const [atracResp, fundResp] = await Promise.all([
-      fetch('http://localhost:8080/api/atracados').then(r => r.json()).catch(() => ({ships:[],total:0})),
-      fetch('http://localhost:8080/api/fundeados').then(r => r.json()).catch(() => ({ships:[],total:0})),
+      fetch(SCRAPER_BASE + '/api/atracados').then(r => r.json()).catch(() => ({ships:[],total:0})),
+      fetch(SCRAPER_BASE + '/api/fundeados').then(r => r.json()).catch(() => ({ships:[],total:0})),
     ]);
 
     const answer = aiGenerateAnswer(q, atracResp, fundResp);
@@ -2941,8 +2945,8 @@ async function aiProcessQuestion(q) {
 
   // Buscar dados e responder
   try {
-    var atracResp = await fetch('http://localhost:8080/api/atracados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
-    var fundResp = await fetch('http://localhost:8080/api/fundeados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
+    var atracResp = await fetch(SCRAPER_BASE + '/api/atracados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
+    var fundResp = await fetch(SCRAPER_BASE + '/api/fundeados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
     var answer = aiGenerateAnswer(q, atracResp, fundResp);
     aiRemoveMsg(thinkEl);
     aiAddMsg('response', answer);

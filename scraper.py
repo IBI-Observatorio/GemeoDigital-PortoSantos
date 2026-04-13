@@ -30,8 +30,9 @@ except ImportError:
 
 URL_ATRACADOS = 'https://www.portodesantos.com.br/informacoes-operacionais/operacoes-portuarias/navegacao-e-movimento-de-navios/atracados-porto-terminais/'
 URL_FUNDEADOS = 'https://www.portodesantos.com.br/informacoes-operacionais/operacoes-portuarias/navegacao-e-movimento-de-navios/navios-fundeados/'
+import os
 INTERVAL_SECONDS = 10 * 60  # 10 minutos
-PORT = 8080
+PORT = int(os.environ.get('PORT', 8080))
 
 # Mapeamento de berço → terminal (para posicionamento no mapa).
 # Ordem importa: prefixos mais longos primeiro para evitar match errado
