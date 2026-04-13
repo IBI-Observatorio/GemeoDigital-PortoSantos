@@ -2391,6 +2391,10 @@ function connectRemote() {
         if (data.message === 'ai:fechar') {
           document.getElementById('ai-panel').style.display = 'none';
           document.getElementById('ai-toggle').style.display = 'block';
+        } else if (data.message === 'fechar demurrage') {
+          closeDemurragePanel();
+        } else if (data.message === 'demurrage') {
+          showDemurragePanel();
         } else if (data.message.startsWith('ai:')) {
           aiProcessQuestion(data.message.substring(3).trim());
         } else {
