@@ -64,7 +64,46 @@
       border-color: #38bdf8; color: #38bdf8;
     }
     .cmd-btn.layer { padding: 14px 8px; font-size: 13px; }
-    .cmd-btn.full { grid-column: 1 / -1; }
+    .cmd-btn.full  { grid-column: 1 / -1; }
+
+    /* Botões de painel — cor de destaque por seção */
+    .cmd-btn.navios {
+      background: rgba(245,158,11,0.08);
+      border-color: rgba(245,158,11,0.25);
+      color: #fbbf24;
+    }
+    .cmd-btn.navios:active {
+      background: rgba(245,158,11,0.22);
+      border-color: #f59e0b;
+    }
+    .cmd-btn.emprego {
+      background: rgba(34,197,94,0.08);
+      border-color: rgba(34,197,94,0.22);
+      color: #86efac;
+    }
+    .cmd-btn.emprego:active {
+      background: rgba(34,197,94,0.22);
+      border-color: #22c55e;
+    }
+    .cmd-btn.fechar {
+      background: rgba(100,116,139,0.08);
+      border-color: rgba(100,116,139,0.2);
+      color: #64748b;
+      font-size: 12px;
+      padding: 10px 6px;
+    }
+    .cmd-btn.fechar:active {
+      background: rgba(100,116,139,0.2);
+      border-color: #94a3b8;
+      color: #cbd5e1;
+    }
+
+    /* Separador de seção */
+    .section-divider {
+      height: 1px;
+      background: #1e293b;
+      margin: 6px 0 0;
+    }
 
     .custom-row { display: flex; gap: 8px; margin-top: 6px; }
     .custom-row input {
@@ -104,6 +143,32 @@
     #micLabel.listening { color: #f87171; }
     #voiceResult { font-size: 13px; color: #38bdf8; margin-top: 6px; min-height: 18px; font-style: italic; }
 
+    /* Gêmeo AI */
+    #ai-section { margin-top: 18px; }
+    #ai-chat {
+      background: rgba(0,0,0,0.5); border: 1px solid rgba(34,197,94,0.2);
+      border-radius: 12px; padding: 12px 14px; min-height: 60px;
+      max-height: 300px; overflow-y: auto; margin-bottom: 10px;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .ai-m { font-size: 13px; line-height: 1.5; }
+    .ai-m.u { color: #94a3b8; text-align: right; }
+    .ai-m.u span { background: rgba(59,130,246,0.2); padding: 6px 12px; border-radius: 12px 12px 2px 12px; display: inline-block; }
+    .ai-m.t { color: #f59e0b; font-style: italic; font-size: 12px; }
+    .ai-m.r { color: #e2e8f0; }
+    .ai-m.r span { background: rgba(34,197,94,0.1); padding: 8px 12px; border-radius: 2px 12px 12px 12px; display: inline-block; }
+    .ai-input-row { display: flex; gap: 8px; }
+    .ai-input-row input {
+      flex: 1; background: #1e293b; border: 1px solid rgba(34,197,94,0.3);
+      border-radius: 8px; padding: 12px; color: #fff; font-size: 14px; outline: none;
+    }
+    .ai-input-row input:focus { border-color: #22c55e; }
+    .ai-input-row button {
+      padding: 12px 18px; background: #22c55e; border: none; border-radius: 8px;
+      color: #000; font-weight: 600; font-size: 14px; cursor: pointer;
+    }
+    .ai-input-row button:active { background: #16a34a; }
+
     footer { margin-top: 32px; text-align: center; font-size: 11px; color: #334155; }
     footer a { color: #475569; text-decoration: none; }
   </style>
@@ -121,7 +186,7 @@
   </svg>
   <div>
     <div class="title">Controle Remoto</div>
-    <div class="sub">Gemeo Digital — Porto Santos</div>
+    <div class="sub">Gêmeo Digital — Porto Santos</div>
   </div>
 </header>
 
@@ -148,15 +213,15 @@
   <div id="voiceResult"></div>
 </div>
 
-<!-- Navegacao -->
-<h2>Navegacao</h2>
+<!-- Navegação -->
+<h2>Navegação</h2>
 <div class="grid-3">
   <button class="cmd-btn" onclick="send('porto')">Porto</button>
   <button class="cmd-btn" onclick="send('tecon')">Tecon</button>
   <button class="cmd-btn" onclick="send('btp')">BTP</button>
   <button class="cmd-btn" onclick="send('alemoa')">Alemoa</button>
   <button class="cmd-btn" onclick="send('canal')">Canal</button>
-  <button class="cmd-btn" onclick="send('tunel')">Tunel</button>
+  <button class="cmd-btn" onclick="send('tunel')">Túnel</button>
   <button class="cmd-btn full" onclick="send('centro')">Centro</button>
 </div>
 
@@ -169,6 +234,42 @@
   <button class="cmd-btn layer" onclick="send('mapa 3d')">Mapa 3D</button>
   <button class="cmd-btn layer" onclick="send('sombras')">Sombras</button>
   <button class="cmd-btn layer" onclick="send('labels')">Labels</button>
+</div>
+
+<!-- Painel de Navios -->
+<h2>🚢 Navios</h2>
+<div class="grid-2">
+  <button class="cmd-btn navios full" onclick="send('quantos navios no porto')">Situação geral do porto</button>
+  <button class="cmd-btn navios" onclick="send('navios atracados')">Atracados</button>
+  <button class="cmd-btn navios" onclick="send('navios fundeados')">Fundeados</button>
+  <button class="cmd-btn navios full" onclick="send('próximas chegadas')">Próximas chegadas</button>
+  <button class="cmd-btn fechar full" onclick="send('fechar navios')">✕ Fechar painel de navios</button>
+</div>
+
+<!-- Painel de Emprego -->
+<h2>👷 Emprego Portuário</h2>
+<div class="grid-2">
+  <button class="cmd-btn emprego full" onclick="send('perfil completo')">Perfil completo</button>
+  <button class="cmd-btn emprego" onclick="send('quantos empregos')">Total de empregos</button>
+  <button class="cmd-btn emprego" onclick="send('homens e mulheres')">Gênero</button>
+  <button class="cmd-btn emprego" onclick="send('faixa etária')">Faixa etária</button>
+  <button class="cmd-btn emprego" onclick="send('salário')">Salário médio</button>
+  <button class="cmd-btn emprego" onclick="send('empregos criados')">Novos empregos</button>
+  <button class="cmd-btn emprego" onclick="send('escolaridade')">Escolaridade</button>
+  <button class="cmd-btn fechar full" onclick="send('fechar emprego')">✕ Fechar painel de emprego</button>
+</div>
+
+<!-- Gêmeo AI -->
+<div id="ai-section">
+  <h2>🤖 Gêmeo AI</h2>
+  <div id="ai-chat">
+    <div class="ai-m r"><span>Olá! Pergunte sobre navios, terminais, cargas...</span></div>
+  </div>
+  <div class="ai-input-row">
+    <input type="text" id="aiQ" placeholder="Pergunte algo..." enterkeyhint="send" onkeydown="if(event.key==='Enter')aiAsk()">
+    <button onclick="aiAsk()">🤖</button>
+  </div>
+  <button class="cmd-btn fechar full" style="margin-top:8px" onclick="send('ai:fechar')">✕ Fechar painel IA</button>
 </div>
 
 <!-- Comando livre -->
@@ -196,7 +297,7 @@ function connect() {
   channelName = (raw || 'gemeo-ibi').toLowerCase().replace(/\s+/g, '-');
   document.getElementById('channelDisplay').textContent = channelName;
   const st = document.getElementById('status');
-  st.textContent = 'Canal "' + channelName + '" pronto — toque um botao para enviar';
+  st.textContent = 'Canal "' + channelName + '" pronto — toque um botão para enviar';
   st.className = 'ok';
 }
 
@@ -216,7 +317,7 @@ async function send(cmd) {
       fb.textContent = 'Erro ao enviar (status ' + res.status + ')';
     }
   } catch(e) {
-    fb.textContent = 'Sem conexao com a internet';
+    fb.textContent = 'Sem conexão com a internet';
   }
 }
 
@@ -226,16 +327,96 @@ function sendCustom() {
   if (v) { send(v); input.value = ''; }
 }
 
-// Enviar com Enter no campo de texto
 document.getElementById('customInput').addEventListener('keydown', function(e) {
   if (e.key === 'Enter') sendCustom();
 });
 
-// Conectar automaticamente ao carregar se ja tem valor
 window.addEventListener('load', function() {
   const ch = document.getElementById('channelInput').value.trim();
   if (ch) connect();
 });
+
+// ── GÊMEO AI ────────────────────────────────────────────
+const SCRAPER = 'http://localhost:8080';
+
+function aiMsg(type, text) {
+  const chat = document.getElementById('ai-chat');
+  const div = document.createElement('div');
+  div.className = 'ai-m ' + type;
+  if (type === 't') { div.textContent = text; }
+  else { div.innerHTML = '<span>' + text + '</span>'; }
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+
+async function aiAsk() {
+  const input = document.getElementById('aiQ');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+
+  aiMsg('u', q);
+  send('ai:' + q);
+  aiMsg('r', 'Pergunta enviada ao Gêmeo. Veja a resposta na tela principal.');
+}
+
+function aiAnswer(q, ships, fund) {
+  const ql = q.toLowerCase();
+
+  if (ql.includes('quantos') && ql.includes('atracad'))
+    return 'Há <b>' + ships.length + ' navios atracados</b> no Porto de Santos.';
+
+  if (ql.includes('quantos') && ql.includes('fundead'))
+    return 'Há <b>' + fund.length + ' navios fundeados</b> aguardando.';
+
+  if (ql.includes('quantos') && (ql.includes('navio') || ql.includes('total')))
+    return '<b>' + ships.length + '</b> atracados + <b>' + fund.length + '</b> fundeados = <b>' + (ships.length+fund.length) + ' navios</b> no porto.';
+
+  var terminais = ['santos brasil','tecon','btp','ecoporto','eport','tgg','teag','teg','cutrale','dow','alamoa','tev','concais'];
+  for (var t of terminais) {
+    if (ql.includes(t)) {
+      var m = ships.filter(function(s) { return s.berth.toLowerCase().includes(t) || s.terminal.toLowerCase().includes(t); });
+      if (m.length > 0) {
+        return m.length + ' navio(s) no ' + t.toUpperCase() + ':' + m.map(function(s) { return '<br>• <b>' + s.vessel_name + '</b> — ' + (s.cargo||'—'); }).join('');
+      }
+      return 'Nenhum navio no ' + t.toUpperCase() + ' agora.';
+    }
+  }
+
+  var all = ships.concat(fund.map(function(f) { return {vessel_name:f.vessel_name, berth:'FUNDEIO', cargo:f.cargo_type, terminal:'FUNDEIO'}; }));
+  for (var s of all) {
+    if (ql.includes(s.vessel_name.toLowerCase())) {
+      var st = s.berth === 'FUNDEIO' ? 'Fundeado' : 'Atracado em ' + s.berth;
+      return '<b>' + s.vessel_name + '</b><br>Status: ' + st + '<br>Carga: ' + (s.cargo||'—');
+    }
+  }
+
+  var cargas = ['soja','açúcar','acucar','contêiner','conteiner','container','diesel','celulose','fertilizante','trigo','veiculo','veículo'];
+  for (var c of cargas) {
+    if (ql.includes(c)) {
+      var ma = ships.filter(function(s) { return (s.cargo||'').toLowerCase().includes(c); });
+      var mf = fund.filter(function(s) { return (s.cargo_type||'').toLowerCase().includes(c); });
+      var tot = ma.length + mf.length;
+      if (tot > 0) {
+        var r = tot + ' navio(s) com ' + c + ':';
+        ma.forEach(function(s) { r += '<br>• <b>' + s.vessel_name + '</b> — atracado em ' + s.berth; });
+        mf.forEach(function(s) { r += '<br>• <b>' + s.vessel_name + '</b> — fundeado'; });
+        return r;
+      }
+      return 'Nenhum navio com ' + c + ' agora.';
+    }
+  }
+
+  if (ql.includes('lista') || ql.includes('quais')) {
+    if (ql.includes('fundead')) {
+      return fund.length + ' fundeados (10 primeiros):' + fund.slice(0,10).map(function(s) { return '<br>• <b>' + s.vessel_name + '</b> — ' + (s.cargo_type||'—'); }).join('');
+    }
+    return ships.length + ' atracados (10 primeiros):' + ships.slice(0,10).map(function(s) { return '<br>• <b>' + s.vessel_name + '</b> — ' + s.berth + ' — ' + (s.cargo||'—'); }).join('');
+  }
+
+  return '<b>' + ships.length + '</b> atracados, <b>' + fund.length + '</b> fundeados. Pergunte sobre terminais, navios ou cargas.';
+}
 
 // ── VOZ ──────────────────────────────────────────────────
 let voiceRec = null;
@@ -252,7 +433,7 @@ function startRecognition() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   voiceRec = new SR();
   voiceRec.lang = 'pt-BR';
-  voiceRec.continuous = false;   // mais compatível com iOS/Android
+  voiceRec.continuous = false;
   voiceRec.interimResults = false;
   voiceRec.maxAlternatives = 1;
 
@@ -264,18 +445,16 @@ function startRecognition() {
 
   voiceRec.onerror = function(e) {
     if (e.error === 'no-speech') {
-      // sem fala — reinicia normalmente
       if (voiceOn) setTimeout(startRecognition, 300);
       return;
     }
-    // erro real: mostra mensagem e para
     setMicState(false, 'Erro: ' + e.error);
-    document.getElementById('voiceResult').textContent = 'Verifique permissao de microfone';
+    document.getElementById('voiceResult').textContent = 'Verifique permissão de microfone';
     voiceOn = false;
   };
 
   voiceRec.onend = function() {
-    if (voiceOn) setTimeout(startRecognition, 200); // reinicia para proxima fala
+    if (voiceOn) setTimeout(startRecognition, 200);
   };
 
   try {
@@ -288,7 +467,7 @@ function startRecognition() {
 
 function toggleVoice() {
   if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    document.getElementById('voiceResult').textContent = 'Voz nao suportada — use Chrome ou Safari';
+    document.getElementById('voiceResult').textContent = 'Voz não suportada — use Chrome ou Safari';
     return;
   }
   if (voiceOn) {

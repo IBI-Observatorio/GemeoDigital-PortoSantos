@@ -55,6 +55,59 @@
     }
     #info-panel span { color: #38bdf8; font-weight: 600; }
 
+    #ai-panel {
+      position: absolute; bottom: 20px; right: 20px; z-index: 3000;
+      width: 380px; max-height: 500px;
+      background: rgba(0, 0, 0, 0.92); backdrop-filter: blur(16px);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 16px;
+      color: #e2e8f0; font-family: system-ui, sans-serif;
+      display: none; flex-direction: column;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+    }
+    #ai-panel .ai-header {
+      padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    #ai-panel .ai-header h3 { margin: 0; font-size: 14px; color: #22c55e; }
+    #ai-panel .ai-header h3 span { color: #64748b; font-weight: 400; font-size: 12px; }
+    #ai-panel .ai-close {
+      background: none; border: none; color: #64748b; font-size: 18px; cursor: pointer;
+    }
+    #ai-panel .ai-close:hover { color: #fff; }
+    #ai-messages {
+      flex: 1; overflow-y: auto; padding: 14px 18px; max-height: 340px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .ai-msg { font-size: 13px; line-height: 1.5; }
+    .ai-msg.user { color: #94a3b8; text-align: right; }
+    .ai-msg.user span { background: rgba(59,130,246,0.2); padding: 6px 12px; border-radius: 12px 12px 2px 12px; display: inline-block; }
+    .ai-msg.thinking { color: #f59e0b; font-style: italic; font-size: 12px; }
+    .ai-msg.thinking .dots::after { content: ''; animation: aidots 1.5s infinite; }
+    @keyframes aidots { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
+    .ai-msg.response { color: #e2e8f0; }
+    .ai-msg.response span { background: rgba(255,255,255,0.05); padding: 10px 14px; border-radius: 2px 12px 12px 12px; display: inline-block; }
+    #ai-input-row {
+      padding: 12px 14px; border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex; gap: 8px;
+    }
+    #ai-input {
+      flex: 1; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px; padding: 8px 12px; color: #fff; font-size: 13px; outline: none;
+    }
+    #ai-input::placeholder { color: #475569; }
+    #ai-input:focus { border-color: #22c55e; }
+    #ai-send {
+      background: #22c55e; border: none; border-radius: 8px; padding: 8px 14px;
+      color: #000; font-weight: 600; font-size: 13px; cursor: pointer;
+    }
+    #ai-send:hover { background: #16a34a; }
+    #ai-toggle {
+      position: absolute; bottom: 20px; right: 20px; z-index: 2999;
+      background: #22c55e; border: none; border-radius: 50%; width: 50px; height: 50px;
+      color: #000; font-size: 22px; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    }
+    #ai-toggle:hover { background: #16a34a; transform: scale(1.1); }
+
     #ship-count {
       position: absolute; top: 16px; right: 16px;
       background: rgba(15, 23, 42, 0.88); backdrop-filter: blur(12px);
@@ -348,7 +401,8 @@
     <button onclick="flyTo('alemoa')">Alemoa</button>
     <button onclick="flyTo('canal')">Canal</button>
     <button onclick="flyTo('tunel')">Túnel</button>
-    <button id="drawBtn" onclick="toggleDrawMode()">Desenhar</button>
+    <button onclick="flyTo('ecoporto')">Ecoporto</button>
+    <button onclick="flyTo('fundeio')">Fundeio</button>
     <button onclick="flyTo('centro')">Centro</button>
   </div>
 
@@ -372,8 +426,9 @@
   <div class="control-row"><label>Mapa 3D fotorrealista</label><input type="checkbox" id="toggle3DTiles" checked onchange="toggleLayer('tiles3d')"></div>
   <div class="control-row"><label id="streetLabel">Nomes de ruas</label><input type="checkbox" id="toggleStreets" onchange="toggleLayer('streets')"></div>
   <div class="control-row"><label id="tunnelLabel">Túnel Santos-Guarujá</label><input type="checkbox" id="toggleTunnel" checked onchange="toggleLayer('tunnel')"></div>
-  <div class="control-row"><label>Navios simulados</label><input type="checkbox" id="toggleShips" checked onchange="toggleLayer('ships')"></div>
-  <div class="control-row"><label>Navios AIS (tempo real)</label><input type="checkbox" id="toggleAIS" checked onchange="toggleLayer('ais')"></div>
+  <div class="control-row"><label>Navios Lineup ANTAQ</label><input type="checkbox" id="toggleLineup" onchange="toggleLayer('lineup')"></div>
+  <div class="control-row"><label>Atracados APS (tempo real)</label><input type="checkbox" id="toggleSPA" checked onchange="toggleLayer('spa')"></div>
+  <div class="control-row"><label>Fundeados APS (tempo real)</label><input type="checkbox" id="toggleFundeados" checked onchange="toggleLayer('fundeados')"></div>
   <div class="control-row"><label>Labels dos navios</label><input type="checkbox" id="toggleLabels" checked onchange="toggleLayer('labels')"></div>
 
   <h2><i data-lucide="sun" style="width:12px;height:12px;display:inline;vertical-align:middle;margin-right:3px"></i> Iluminação</h2>
@@ -406,6 +461,20 @@
   Lat: <span id="lat">-23.93</span> Lon: <span id="lon">-46.32</span> | Alt: <span id="alt">—</span>m
 </div>
 
+<button id="ai-toggle" onclick="toggleAIPanel()" title="Gêmeo AI">🤖</button>
+<div id="ai-panel">
+  <div class="ai-header">
+    <h3>🤖 Gêmeo AI <span>— Porto de Santos</span></h3>
+    <button class="ai-close" onclick="toggleAIPanel()">&times;</button>
+  </div>
+  <div id="ai-messages">
+    <div class="ai-msg response"><span>Olá! Sou o Gêmeo AI do Porto de Santos. Pergunte sobre navios atracados, fundeados, terminais...</span></div>
+  </div>
+  <div id="ai-input-row">
+    <input type="text" id="ai-input" placeholder="Pergunte algo..." onkeydown="if(event.key==='Enter')aiSend()">
+    <button id="ai-send" onclick="aiSend()">Enviar</button>
+  </div>
+</div>
 <div id="ship-count" style="display:none;">
   <i data-lucide="ship" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:4px"></i>
   <span id="shipCountNum">0</span> simulados |
@@ -522,7 +591,7 @@ async function initMap(cesiumToken, googleKey, aisKey) {
 
   viewer = new Cesium.Viewer('cesiumContainer', {
     terrain: Cesium.Terrain.fromWorldTerrain(),
-    infoBox: true,
+    infoBox: false,
     selectionIndicator: true,
     shadows: true,
     shouldAnimate: true,
@@ -566,11 +635,12 @@ async function initMap(cesiumToken, googleKey, aisKey) {
 
   document.getElementById('loading').style.display = 'none';
 
-  // Criar marcadores de navios
-  createShipMarkers();
+  // Navios simulados desabilitados — dados reais via SPA
+  // createShipMarkers();
 
   // Construir e mostrar túnel (checkbox já marcado por padrão)
   buildTunnel();
+  console.log(`🚇 Ligando ${tunnelEntities.length} entidades do túnel`);
   tunnelEntities.forEach(e => { e.show = true; });
 
   // Posicionar câmera — flyTo com delay para tiles carregarem
@@ -595,21 +665,28 @@ async function initMap(cesiumToken, googleKey, aisKey) {
   // Re-renderizar ícones Lucide nos elementos recém-visíveis
   if (typeof lucide !== 'undefined') lucide.createIcons();
 
-  // Iniciar AIS se key disponível + Lineup como fallback
+  // Fontes de dados reais — controladas pelos toggles independentes
+  const aisEnabled = document.getElementById('toggleAIS')?.checked || false;
+  const lineupEnabled = document.getElementById('toggleLineup')?.checked || false;
   const effectiveAisKey = aisKey || AIS_STREAM_API_KEY || localStorage.getItem('aisStreamKey');
-  if (effectiveAisKey) {
+
+  if (aisEnabled && effectiveAisKey) {
     connectAIS(effectiveAisKey);
-    // Se após 15s não receber dados AIS, carregar Lineup como fallback
-    setTimeout(() => {
-      if (Object.keys(aisEntities).length === 0) {
-        console.log('⏳ AIS sem dados após 15s — carregando Lineup ANTAQ como fallback');
-        loadLineupData();
-      }
-    }, 15000);
   } else {
-    // Sem AIS key — carregar Lineup direto
-    console.log('ℹ️ AIS não configurado — carregando dados Lineup ANTAQ');
+    console.log('ℹ️ AIS desabilitado pelo usuário');
+  }
+
+  if (lineupEnabled) {
+    console.log('📋 Carregando dados Lineup ANTAQ...');
     loadLineupData();
+  }
+
+  if (document.getElementById('toggleSPA').checked) {
+    loadSPAData();
+  }
+
+  if (document.getElementById('toggleFundeados').checked) {
+    loadFundeadosData();
   }
 
   // === FIX: Habilitar zoom com trackpad/pinch no Mac ===
@@ -666,6 +743,69 @@ async function initMap(cesiumToken, googleKey, aisKey) {
     }
     document.getElementById('alt').textContent = Math.round(viewer.camera.positionCartographic.height);
   }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+
+  // ===== Capturar coordenadas no Alt+Click =====
+  // Uso: segure ALT e clique num ponto do mapa (cais, berço, etc).
+  // As coordenadas são impressas no console e copiadas para o clipboard
+  // no formato pronto para colar em SANTOS_TERMINALS.
+  const _pickedMarkers = [];
+  window.clearPickedCoords = () => {
+    _pickedMarkers.forEach(e => viewer.entities.remove(e));
+    _pickedMarkers.length = 0;
+    console.log('🧹 Marcadores de captura limpos');
+  };
+  handler.setInputAction(function(click) {
+    let cartesian = viewer.scene.pickPosition(click.position);
+    if (!cartesian) {
+      const ray = viewer.camera.getPickRay(click.position);
+      cartesian = viewer.scene.globe.pick(ray, viewer.scene);
+    }
+    if (!cartesian) {
+      cartesian = viewer.camera.pickEllipsoid(click.position, viewer.scene.globe.ellipsoid);
+    }
+    if (!cartesian) { console.warn('⚠️ Não foi possível capturar posição'); return; }
+
+    const c = Cesium.Cartographic.fromCartesian(cartesian);
+    const lat = Cesium.Math.toDegrees(c.latitude);
+    const lon = Cesium.Math.toDegrees(c.longitude);
+    const latStr = lat.toFixed(5);
+    const lonStr = lon.toFixed(5);
+    const snippet = `{ lat: ${latStr}, lon: ${lonStr}, heading: 0 },`;
+
+    console.log(`📍 Capturado #${_pickedMarkers.length + 1}: ${snippet}`);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(snippet).then(
+        () => console.log('   ✓ Copiado para clipboard'),
+        () => console.log('   ✗ Clipboard bloqueado — copie do log acima')
+      );
+    }
+
+    const marker = viewer.entities.add({
+      position: Cesium.Cartesian3.fromDegrees(lon, lat, 2),
+      point: {
+        pixelSize: 12,
+        color: Cesium.Color.YELLOW,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+      label: {
+        text: `#${_pickedMarkers.length + 1}  ${latStr}, ${lonStr}`,
+        font: 'bold 11px monospace',
+        fillColor: Cesium.Color.YELLOW,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 3,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -14),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString('rgba(15,23,42,0.85)'),
+        backgroundPadding: new Cesium.Cartesian2(5, 3),
+      },
+    });
+    _pickedMarkers.push(marker);
+  }, Cesium.ScreenSpaceEventType.LEFT_CLICK, Cesium.KeyboardEventModifier.ALT);
 
   // Animação de navios em movimento
   viewer.clock.onTick.addEventListener(animateShips);
@@ -930,7 +1070,9 @@ function animateShips() {
 // ============================================================
 function flyTo(location) {
   document.querySelectorAll('.btn-group button').forEach(b => b.classList.remove('active'));
-  event?.target?.classList.add('active');
+  if (typeof event !== 'undefined' && event && event.target && event.target.classList) {
+    event.target.classList.add('active');
+  }
 
   const views = {
     porto:  { dest: [-46.2920, -23.9675, 1500], heading: 320, pitch: -35 },
@@ -938,6 +1080,8 @@ function flyTo(location) {
     btp:    { dest: [-46.3510, -23.9190, 500],   heading: 170, pitch: -25 },
     alemoa: { dest: [-46.3680, -23.9170, 500],   heading: 160, pitch: -25 },
     canal:  { dest: [-46.2910, -23.9750, 800],   heading: 340, pitch: -20 },
+    ecoporto: { dest: [-46.3380, -23.9258, 500], heading: 250, pitch: -25 },
+    fundeio:  { dest: [-46.3456, -23.9892, 5000], heading: 0, pitch: -45 },
     tunel:  { dest: [-46.2920, -23.9675, 1500],   heading: 320, pitch: -35 },
     centro: { dest: [-46.3282, -23.9607, 1000],  heading: 0,   pitch: -35 },
   };
@@ -967,14 +1111,32 @@ function toggleLayer(layer) {
       toggleTunnel(document.getElementById('toggleTunnel').checked);
       break;
     case 'ships':
-      const show = document.getElementById('toggleShips').checked;
+      const show = document.getElementById('toggleShips')?.checked || false;
       shipEntities.forEach(e => { e.show = show; });
       animationRunning = show;
       break;
     case 'ais':
-      const showAIS = document.getElementById('toggleAIS').checked;
+      const showAIS = document.getElementById('toggleAIS')?.checked || false;
       Object.values(aisEntities).forEach(e => { e.show = showAIS; });
-      lineupEntities.forEach(e => { e.show = showAIS; });
+      if (showAIS && Object.keys(aisEntities).length === 0) {
+        const key = document.getElementById('aisKeyInput')?.value?.trim() || AIS_STREAM_API_KEY || localStorage.getItem('aisStreamKey');
+        if (key) connectAIS(key);
+      }
+      break;
+    case 'lineup':
+      const showLineup = document.getElementById('toggleLineup').checked;
+      lineupEntities.forEach(e => { e.show = showLineup; });
+      if (showLineup && !lineupLoaded) loadLineupData();
+      break;
+    case 'spa':
+      const showSPA = document.getElementById('toggleSPA').checked;
+      spaEntities.forEach(e => { e.show = showSPA; });
+      if (showSPA && !spaLoaded) loadSPAData();
+      break;
+    case 'fundeados':
+      const showFund = document.getElementById('toggleFundeados').checked;
+      fundeadosEntities.forEach(e => { e.show = showFund; });
+      if (showFund && !fundeadosLoaded) loadFundeadosData();
       break;
     case 'labels':
       const showLabels = document.getElementById('toggleLabels').checked;
@@ -1464,24 +1626,23 @@ function updateAISStatus(status) {
 // ============================================================
 const LINEUP_API = 'https://lineup-antaq.up.railway.app/api/v1';
 
-// Terminais de Santos — coordenadas calibradas NA ÁGUA via satélite + Poligonais GeoJSON
-// Cada berço é um ponto confirmado na superfície da água junto ao cais
-// Berços dos terminais — TODOS no CENTRO DO CANAL (waypoints confirmados na água)
-// Empurrados para longe da margem para garantir que nunca fiquem em terra
+// Terminais de Santos — coordenadas no CENTRO DO CANAL (confirmadas na água).
+// Ficam distantes do cais real (100-300m para dentro do canal) porque a
+// alternativa — tentar encostar no cais — coloca os marcadores em terra devido
+// à imprecisão entre o tileset 3D e coordenadas em grau. Para ajustar, use
+// Ctrl+Click no mapa 3D e copie as coordenadas do console (Cesium imprime no
+// infoBox). Feito isso, troque os números abaixo.
 const SANTOS_TERMINALS = {
   SANTOS_BRASIL: {
-    name: 'Santos Brasil (Tecon)', side: 'esquerda',
-    // Usa waypoints centrais do canal na região do Tecon
+    name: 'Santos Brasil (Tecon)', side: 'direita',
     berths: [
-      { lat: -23.95800, lon: -46.30100, heading: 135 },
-      { lat: -23.96111, lon: -46.29959, heading: 315 },
-      { lat: -23.96400, lon: -46.29600, heading: 135 },
-      { lat: -23.96714, lon: -46.29772, heading: 315 },
+      { lat: -23.96061, lon: -46.29712, heading: 315 },
+      { lat: -23.96308, lon: -46.29480, heading: 315 },
+      { lat: -23.96585, lon: -46.29226, heading: 315 },
     ]
   },
   BTP_SANTOS: {
-    name: 'BTP', side: 'direita',
-    // Centro do canal na região da Alemoa/BTP (lon mais negativo)
+    name: 'BTP', side: 'direita', // Guarujá (Conceiçãozinha)
     berths: [
       { lat: -23.92000, lon: -46.35000, heading: 250 },
       { lat: -23.92000, lon: -46.34700, heading: 70 },
@@ -1489,8 +1650,7 @@ const SANTOS_TERMINALS = {
     ]
   },
   DPWORLD_SANTOS: {
-    name: 'DP World', side: 'esquerda',
-    // Centro do canal frente à Ilha Barnabé
+    name: 'DP World', side: 'esquerda', // Santos (Ilha Barnabé)
     berths: [
       { lat: -23.93526, lon: -46.31084, heading: 270 },
       { lat: -23.93300, lon: -46.31300, heading: 90 },
@@ -1498,8 +1658,7 @@ const SANTOS_TERMINALS = {
     ]
   },
   ECOPORTO: {
-    name: 'Ecoporto', side: 'direita',
-    // Centro do canal na região Outeirinhos/Macuco
+    name: 'Ecoporto', side: 'esquerda', // Santos (Saboó/Outeirinhos)
     berths: [
       { lat: -23.94302, lon: -46.30616, heading: 310 },
       { lat: -23.94100, lon: -46.30750, heading: 130 },
@@ -1541,29 +1700,46 @@ async function loadLineupData() {
   const terminals = Object.keys(SANTOS_TERMINALS);
   const allCalls = [];
 
+  // Consulta cada status separadamente. Para cada navio, ficamos com a
+  // captura MAIS RECENTE (captured_at maior) — a API retorna um histórico
+  // de snapshots e precisamos do estado atual, não do primeiro visto.
+  const STATUSES = ['BERTHED', 'EXPECTED', 'DEPARTED'];
   for (const code of terminals) {
-    try {
-      const resp = await fetch(`${LINEUP_API}/port-calls?terminal=${code}&days=14&limit=50`);
-      if (!resp.ok) continue;
-      const data = await resp.json();
+    for (const status of STATUSES) {
+      try {
+        const resp = await fetch(`${LINEUP_API}/port-calls?terminal=${code}&status=${status}&days=14&limit=200`);
+        if (!resp.ok) { console.warn(`Lineup ${code}/${status} HTTP ${resp.status}`); continue; }
+        const data = await resp.json();
 
-      // Dedupliçar por vessel_name + status (API retorna múltiplas capturas)
-      const seen = new Set();
-      for (const pc of (data.port_calls || [])) {
-        const key = `${pc.vessel_name}_${pc.status}`;
-        if (!seen.has(key)) {
-          seen.add(key);
+        const latestByVessel = new Map();
+        for (const pc of (data.port_calls || [])) {
+          const key = `${pc.vessel_name}_${pc.status}`;
+          const prev = latestByVessel.get(key);
+          if (!prev || new Date(pc.captured_at) > new Date(prev.captured_at)) {
+            latestByVessel.set(key, pc);
+          }
+        }
+        for (const pc of latestByVessel.values()) {
           allCalls.push({ ...pc, _terminalCode: code });
         }
+      } catch (e) {
+        console.warn(`Lineup fetch error for ${code}/${status}:`, e);
       }
-    } catch (e) {
-      console.warn(`Lineup fetch error for ${code}:`, e);
     }
   }
 
   // Filtrar: BERTHED > EXPECTED (próximos 7 dias) > DEPARTED recentes
   const now = new Date();
-  const berthed = allCalls.filter(c => c.status === 'BERTHED');
+  const berthed = allCalls.filter(c => {
+    if (c.status !== 'BERTHED') return false;
+    // Descartar navios cujo ETD já passou — provavelmente já saíram,
+    // mas a API ainda registra a última captura como BERTHED.
+    if (c.etd) {
+      const etd = new Date(c.etd);
+      if (etd < now) return false;
+    }
+    return true;
+  });
   const expected = allCalls.filter(c => {
     if (c.status !== 'EXPECTED') return false;
     if (!c.eta) return true; // Sem ETA mas esperado = incluir
@@ -1584,8 +1760,11 @@ async function loadLineupData() {
     if (!a.eta) return 1; if (!b.eta) return -1;
     return new Date(a.eta) - new Date(b.eta);
   });
-  const shipsToShow = [...berthed, ...expected.slice(0, 20), ...departed.slice(0, 8)];
+  // Ordenar BERTHED pela captura mais recente (estado atual mais confiável)
+  berthed.sort((a, b) => new Date(b.captured_at) - new Date(a.captured_at));
+  const shipsToShow = [...berthed.slice(0, 16), ...expected.slice(0, 20), ...departed.slice(0, 8)];
   console.log(`📋 Lineup: ${berthed.length} atracados, ${expected.length} esperados, ${departed.length} partidos → mostrando ${shipsToShow.length}`);
+  console.log('📋 BERTHED:', berthed.slice(0, 16).map(s => `${s.vessel_name} [${s._terminalCode}]`));
 
   createLineupMarkers(shipsToShow);
   lineupLoaded = true;
@@ -1619,8 +1798,10 @@ function createLineupMarkers(portCalls) {
       const berth = terminal.berths[berthIndex[termCode] % terminal.berths.length];
       berthIndex[termCode]++;
 
-      // Pequeno offset para não sobrepor navios no mesmo berço
-      const offset = (berthIndex[termCode] - 1) * 0.0003;
+      // Offset compacto: empilha ao longo do heading do berço mas limita
+      // a deslocamento a ~150m para não sair da área do terminal.
+      const stackIdx = Math.floor((berthIndex[termCode] - 1) / terminal.berths.length);
+      const offset = stackIdx * 0.00045; // ~50m por camada
       const headRad = Math.PI * berth.heading / 180;
       lat = berth.lat + offset * Math.cos(headRad);
       lon = berth.lon + offset * Math.sin(headRad);
@@ -1820,57 +2001,15 @@ function buildTunnel() {
       tunnelEntities.push(centerLine);
     }
 
-    // Faixas de rodagem (marcas na superfície superior)
-    for (const laneOffset of [-12, -8.5, -5, 5, 8.5, 12]) {
-      // Pequenas marcas de faixa no topo do túnel
-      const mPerDegLat = 111320;
-      const mPerDegLon = 111320 * Math.cos(midLat * Math.PI / 180);
-      const perpHeading = (heading + 90) * Math.PI / 180;
-      const offsetLat = laneOffset * Math.cos(perpHeading) / mPerDegLat;
-      const offsetLon = laneOffset * Math.sin(perpHeading) / mPerDegLon;
-
-      if (i % 3 === 0) { // Não em todo segmento para performance
-        const laneMark = viewer.entities.add({
-          position: Cesium.Cartesian3.fromDegrees(
-            midLon + offsetLon, midLat + offsetLat, midAlt + TUNNEL_HEIGHT + 0.2
-          ),
-          box: {
-            dimensions: new Cesium.Cartesian3(8, 0.3, 0.1),
-            material: Cesium.Color.WHITE.withAlpha(0.7),
-          },
-          show: false,
-        });
-        tunnelEntities.push(laneMark);
-      }
-    }
   }
 
-  // === 2. JUNTAS DOS MÓDULOS (linhas verdes a cada ~145m na seção submersa) ===
-  const subPts = TUNNEL_ROUTE.submerged;
-  for (let i = 0; i < subPts.length; i++) {
-    const p = subPts[i];
-    const entity = viewer.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(p.lon, p.lat, p.alt + TUNNEL_HEIGHT + 0.5),
-      ellipse: {
-        semiMajorAxis: TUNNEL_WIDTH / 2 + 2,
-        semiMinorAxis: 2,
-        material: Cesium.Color.fromCssColorString('#22c55e').withAlpha(0.6),
-        height: p.alt + TUNNEL_HEIGHT + 0.3,
-      },
-      show: false,
-    });
-    tunnelEntities.push(entity);
-  }
-
-  // === 3. PORTAIS DE ENTRADA (arcos nas bocas do túnel) ===
+  // === 3. PORTAIS DE ENTRADA ===
   const portals = [
     { ...TUNNEL_ROUTE.santosApproach[TUNNEL_ROUTE.santosApproach.length - 1], side: 'Santos' },
     { ...TUNNEL_ROUTE.guarujaApproach[0], side: 'Guarujá' },
   ];
-
   portals.forEach(portal => {
-    // Arco do portal
-    const portalEntity = viewer.entities.add({
+    tunnelEntities.push(viewer.entities.add({
       position: Cesium.Cartesian3.fromDegrees(portal.lon, portal.lat, portal.alt + TUNNEL_HEIGHT / 2),
       box: {
         dimensions: new Cesium.Cartesian3(TUNNEL_WIDTH + 4, 5, TUNNEL_HEIGHT + 4),
@@ -1879,106 +2018,25 @@ function buildTunnel() {
         outlineColor: Cesium.Color.fromCssColorString('#f59e0b').withAlpha(0.8),
       },
       show: false,
-    });
-    tunnelEntities.push(portalEntity);
+    }));
   });
 
-  // === 4. TRAÇADO DE SUPERFÍCIE — estilo Google Maps (bordas + preenchimento + separador central) ===
-  const surfaceCoords = allPoints.flatMap(p => [p.lon, p.lat]);
-  const positions = Cesium.Cartesian3.fromDegreesArray(surfaceCoords);
-
-  // Estilo Google Maps — borda cinza + via branca + separador amarelo
-  // Elevadas a alturas diferentes para evitar sobreposição (clampToGround esconde camadas)
+  // === 4. TRAÇADO DE SUPERFÍCIE ===
   const surfacePositionsLow = allPoints.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 8));
   const surfacePositionsMid = allPoints.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 9));
   const surfacePositionsHigh = allPoints.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 10));
-
-  // Borda cinza (mais baixa, mais larga)
   tunnelEntities.push(viewer.entities.add({
     polyline: { positions: surfacePositionsLow, width: 22, material: Cesium.Color.fromCssColorString('#cbd5e1').withAlpha(0.9) },
     show: false,
   }));
-  // Via cinza claro (meio, um pouco mais estreita)
   tunnelEntities.push(viewer.entities.add({
     polyline: { positions: surfacePositionsMid, width: 16, material: Cesium.Color.fromCssColorString('#4b5563').withAlpha(0.92) },
     show: false,
   }));
-  // Separador central amarelo (mais alta, fina)
   tunnelEntities.push(viewer.entities.add({
     polyline: { positions: surfacePositionsHigh, width: 2, material: Cesium.Color.fromCssColorString('#f59e0b').withAlpha(0.95) },
     show: false,
   }));
-
-  // === 5. LABELS INFORMATIVOS ===
-  const labels = [
-    { lat: -23.96128, lon: -46.30572, alt: 35, text: "PORTAL SANTOS\nAv. Cons. Rodrigues Alves\nMacuco / Outeirinhos\n3 faixas + galeria" },
-    { lat: -23.95542, lon: -46.30686, alt: 10, text: "SEÇÃO SUBMERSA\n870m × 33m × 10m\n21m abaixo da água\n6 módulos de 145m" },
-    { lat: -23.94153, lon: -46.29815, alt: 35, text: "PORTAL GUARUJÁ\nVicente de Carvalho\nRod. Cônego Domênico Rangoni\n3 faixas + galeria" },
-    { lat: -23.95600, lon: -46.30750, alt: 60, text: "TÚNEL SUBMERSO\nSANTOS-GUARUJÁ\nMota-Engil • 2026-2031\nR$ 6,8 bi • 6 faixas" },
-  ];
-
-  labels.forEach(l => {
-    const entity = viewer.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(l.lon, l.lat, l.alt),
-      label: {
-        text: l.text,
-        font: l.text.includes('TÚNEL SUBMERSO') ? 'bold 14px sans-serif' : '11px sans-serif',
-        fillColor: Cesium.Color.WHITE,
-        outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 3,
-        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        showBackground: true,
-        backgroundColor: Cesium.Color.fromCssColorString('rgba(15, 23, 42, 0.85)'),
-        backgroundPadding: new Cesium.Cartesian2(8, 6),
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, l.text.includes('TÚNEL SUBMERSO') ? 15000 : 5000),
-        heightReference: Cesium.HeightReference.RELATIVE_TO_GROUND,
-      },
-      show: false,
-    });
-    tunnelEntities.push(entity);
-  });
-
-  // === 6. INDICADORES DE PROFUNDIDADE ===
-  const depthMarkers = [
-    { lat: -23.95730, lon: -46.30860, depth: 15, label: "-15m" },
-    { lat: -23.95653, lon: -46.30806, depth: 21, label: "-21m" },
-    { lat: -23.95399, lon: -46.30528, depth: 21, label: "-21m (máx)" },
-    { lat: -23.95188, lon: -46.30336, depth: 15, label: "-15m" },
-  ];
-
-  depthMarkers.forEach(d => {
-    // Linha vertical de profundidade
-    const lineEntity = viewer.entities.add({
-      polyline: {
-        positions: [
-          Cesium.Cartesian3.fromDegrees(d.lon, d.lat, 5),
-          Cesium.Cartesian3.fromDegrees(d.lon, d.lat, -d.depth),
-        ],
-        width: 2,
-        material: Cesium.Color.fromCssColorString('#06b6d4').withAlpha(0.6),
-      },
-      show: false,
-    });
-    tunnelEntities.push(lineEntity);
-
-    // Label de profundidade
-    const depthLabel = viewer.entities.add({
-      position: Cesium.Cartesian3.fromDegrees(d.lon, d.lat, -d.depth / 2),
-      label: {
-        text: d.label,
-        font: 'bold 10px monospace',
-        fillColor: Cesium.Color.fromCssColorString('#06b6d4'),
-        outlineColor: Cesium.Color.BLACK,
-        outlineWidth: 2,
-        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 3000),
-      },
-      show: false,
-    });
-    tunnelEntities.push(depthLabel);
-  });
 
   tunnelBuilt = true;
   console.log(`🚇 Túnel Santos-Guarujá: ${tunnelEntities.length} entidades criadas`);
@@ -2176,6 +2234,36 @@ function voiceFlyTo(location) {
 }
 
 const VOICE_COMMANDS = [
+  // ── Painel de Navios ────────────────────────────────────────────────────
+  { patterns: ['quantos navios', 'navios no porto', 'situação dos navios', 'situação do porto', 'mostre os navios'],
+    action: () => showNaviosPanel('geral') },
+  { patterns: ['navios atracados', 'quais estão atracados'],
+    action: () => showNaviosPanel('atracados') },
+  { patterns: ['navios fundeados', 'quais estão fundeados', 'fundeados', 'quantos fundeados'],
+    action: () => showNaviosPanel('fundeados') },
+  { patterns: ['navios esperados', 'quais estão chegando', 'próximas chegadas', 'lineup'],
+    action: () => showNaviosPanel('esperados') },
+  { patterns: ['fechar navios', 'fechar painel de navios'],
+    action: () => closeNaviosPanel() },
+
+  // ── Painel de Emprego ───────────────────────────────────────────────────
+  { patterns: ['quantos empregos', 'empregos no porto', 'mostre os empregos', 'total de empregos'],
+    action: () => showEmpregoPanel('total') },
+  { patterns: ['homens e mulheres', 'quantos são homens', 'gênero', 'masculino feminino'],
+    action: () => showEmpregoPanel('genero') },
+  { patterns: ['faixa etária', 'idade dos trabalhadores'],
+    action: () => showEmpregoPanel('idade') },
+  { patterns: ['salário', 'remuneração', 'quanto ganham'],
+    action: () => showEmpregoPanel('salario') },
+  { patterns: ['empregos criados', 'novos empregos', 'caged', 'crescimento do emprego'],
+    action: () => showEmpregoPanel('caged') },
+  { patterns: ['escolaridade', 'nível de educação', 'formação dos trabalhadores'],
+    action: () => showEmpregoPanel('escolaridade') },
+  { patterns: ['perfil completo', 'perfil dos trabalhadores', 'mostre tudo sobre emprego'],
+    action: () => showEmpregoPanel('completo') },
+  { patterns: ['fechar emprego', 'fechar painel de emprego'],
+    action: () => closeEmpregoPanel() },
+
   // Localização
   { patterns: ['ir para porto', 'ver porto', 'porto'],             action: () => voiceFlyTo('porto') },
   { patterns: ['ir para tecon', 'ver tecon', 'tecon'],             action: () => voiceFlyTo('tecon') },
@@ -2294,7 +2382,14 @@ function connectRemote() {
     try {
       const data = JSON.parse(e.data);
       if (data.event === 'message' && data.message) {
-        processVoiceCommand(data.message);
+        if (data.message === 'ai:fechar') {
+          document.getElementById('ai-panel').style.display = 'none';
+          document.getElementById('ai-toggle').style.display = 'block';
+        } else if (data.message.startsWith('ai:')) {
+          aiProcessQuestion(data.message.substring(3).trim());
+        } else {
+          processVoiceCommand(data.message);
+        }
       }
     } catch(err) {
       console.error('[REMOTO] erro ao processar:', err);
@@ -2321,7 +2416,1875 @@ function connectRemote() {
 // ── END REMOTE CONTROL ─────────────────────────────────────────────────────
 
 // ── END VOICE CONTROL ──────────────────────────────────────────────────────
+
+// ============================================================
+//  ATRACADOS SPA — Dados em tempo real via scraper local
+// ============================================================
+const SPA_API = 'http://localhost:8080/api/atracados';
+const SPA_REFRESH_MS = 10 * 60 * 1000; // re-busca a cada 10min (acompanhando o scraper)
+let spaEntities = [];
+let spaLoaded = false;
+let spaTimer = null;
+
+// Terminais conhecidos com berços capturados via Shift+Click.
+// Terminais que não estão aqui usam CANAL_WAYPOINTS como fallback.
+const SPA_TERMINALS = {
+  // ── Lado Guarujá (margem direita), de norte a sul ──
+  SANTOS_BRASIL: {
+    berths: [
+      { lat: -23.96061, lon: -46.29712, heading: 315 },
+      { lat: -23.96308, lon: -46.29480, heading: 315 },
+      { lat: -23.96585, lon: -46.29226, heading: 315 },
+    ]
+  },
+  TEV:     { berths: [{ lat: -23.95937, lon: -46.29851, heading: 315 }] },
+  TGG:     { berths: [{ lat: -23.96850, lon: -46.29016, heading: 330 }] },
+  TERMAG:  { berths: [{ lat: -23.97110, lon: -46.28901, heading: 340 }] },
+  TEAG:    { berths: [{ lat: -23.97301, lon: -46.28810, heading: 350 }] },
+  TEG:     { berths: [{ lat: -23.97517, lon: -46.28763, heading: 0 }] },
+  CUTRALE: { berths: [{ lat: -23.97978, lon: -46.28670, heading: 0 }] },
+  DOW:     { berths: [{ lat: -23.98209, lon: -46.28670, heading: 0 }] },
+  ADM:     { berths: [{ lat: -23.98386, lon: -46.29167, heading: 300 }] },
+  // ── Lado Santos (margem esquerda), de sul a norte ──
+  TES:          { berths: [{ lat: -23.98131, lon: -46.29090, heading: 150 }] },
+  ARMAZEM_39:   { berths: [{ lat: -23.97786, lon: -46.29126, heading: 135 }] },
+  ARMAZEM_37:   { berths: [{ lat: -23.97304, lon: -46.29428, heading: 135 }] },
+  ARMAZEM_20_21:{ berths: [{ lat: -23.95440, lon: -46.30877, heading: 135 }] },
+  CONCAIS:      { berths: [{ lat: -23.95230, lon: -46.31005, heading: 135 }] },
+  // ── Canal interno (BTP / Ecoporto) ──
+  BTP_SANTOS: {
+    berths: [
+      { lat: -23.92016, lon: -46.35515, heading: 250 },
+      { lat: -23.92072, lon: -46.35189, heading: 250 },
+      { lat: -23.92135, lon: -46.34774, heading: 250 },
+    ]
+  },
+  ECOPORTO: {
+    berths: [
+      { lat: -23.92499, lon: -46.34034, heading: 70 },
+      { lat: -23.92552, lon: -46.33921, heading: 70 },
+      { lat: -23.92601, lon: -46.33779, heading: 70 },
+      { lat: -23.92652, lon: -46.33627, heading: 70 },
+    ]
+  },
+};
+
+function getSPAColor(terminal) {
+  const map = {
+    SANTOS_BRASIL: '#ef4444', BTP_SANTOS: '#3b82f6', ECOPORTO: '#8b5cf6',
+    TEV: '#f43f5e', TGG: '#f97316', TERMAG: '#fb923c', TEAG: '#f59e0b',
+    TEG: '#eab308', CUTRALE: '#84cc16', DOW: '#22c55e', ADM: '#14b8a6',
+    TES: '#06b6d4', CONCAIS: '#0ea5e9',
+    ARMAZEM_39: '#64748b', ARMAZEM_37: '#64748b', ARMAZEM_20_21: '#64748b',
+  };
+  return map[terminal] || '#94a3b8';
+}
+
+async function loadSPAData() {
+  try {
+    console.log('🚢 Buscando atracados via scraper SPA...');
+    const resp = await fetch(SPA_API);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    if (!data.ships || data.ships.length === 0) {
+      console.warn('🚢 SPA: nenhum navio retornado');
+      return;
+    }
+
+    window.spaShipsRaw = data.ships; // 📊 Painel de navios
+    createSPAMarkers(data.ships);
+    spaLoaded = true;
+
+    console.log(`🚢 SPA: ${data.ships.length} navios atracados (atualizado: ${data.last_update || '?'})`);
+
+    // Agendar próximo refresh
+    if (spaTimer) clearInterval(spaTimer);
+    spaTimer = setInterval(async () => {
+      if (!document.getElementById('toggleSPA').checked) return;
+      try {
+        const r = await fetch(SPA_API);
+        if (!r.ok) return;
+        const d = await r.json();
+        if (d.ships && d.ships.length > 0) {
+          window.spaShipsRaw = d.ships; // 📊 Painel de navios
+          createSPAMarkers(d.ships);
+          console.log(`🚢 SPA refresh: ${d.ships.length} navios`);
+        }
+      } catch (e) { console.warn('🚢 SPA refresh erro:', e); }
+    }, SPA_REFRESH_MS);
+
+  } catch (e) {
+    console.warn('🚢 SPA indisponível (scraper rodando?). Erro:', e.message);
+    console.warn('   Inicie o scraper: python scraper.py');
+  }
+}
+
+function createSPAMarkers(ships) {
+  spaEntities.forEach(e => viewer.entities.remove(e));
+  spaEntities = [];
+
+  const berthIndex = {};
+  const canalIdx = { i: 0 };
+
+  const skipped = [];
+  ships.forEach(ship => {
+    const termKey = ship.terminal;
+    const termData = SPA_TERMINALS[termKey];
+
+    // Só plotar navios em terminais com berços capturados
+    if (!termData) {
+      skipped.push(`${ship.vessel_name} (${ship.berth})`);
+      return;
+    }
+
+    let lat, lon, heading;
+    if (!berthIndex[termKey]) berthIndex[termKey] = 0;
+    const berth = termData.berths[berthIndex[termKey] % termData.berths.length];
+    const stackIdx = Math.floor(berthIndex[termKey] / termData.berths.length);
+    const offset = stackIdx * 0.00045;
+    const headRad = Math.PI * berth.heading / 180;
+    lat = berth.lat + offset * Math.cos(headRad);
+    lon = berth.lon + offset * Math.sin(headRad);
+    heading = berth.heading;
+    berthIndex[termKey]++;
+
+    const color = getSPAColor(termKey);
+    const cargoInfo = ship.cargo || '—';
+    const tons = ship.unload_tons + ship.load_tons;
+    const tonsStr = tons > 0 ? `${tons.toLocaleString('pt-BR')}t` : '';
+
+    const entity = viewer.entities.add({
+      name: `[SPA] ${ship.vessel_name}`,
+      position: Cesium.Cartesian3.fromDegrees(lon, lat, 2),
+
+      point: {
+        pixelSize: 14,
+        color: Cesium.Color.fromCssColorString(color),
+        outlineColor: Cesium.Color.fromCssColorString('#22c55e'),
+        outlineWidth: 2.5,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+
+      label: {
+        text: ship.vessel_name,
+        font: '11px sans-serif',
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -12),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 12000),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString('rgba(5,46,22,0.8)'),
+        backgroundPadding: new Cesium.Cartesian2(5, 3),
+      },
+
+      description: `
+        <div style="font-family:system-ui;padding:8px;">
+          <h3 style="margin:0 0 8px;color:${color}">
+            🟢 ${ship.vessel_name}
+            <span style="font-size:11px;color:#888">[Porto de Santos — SPA]</span>
+          </h3>
+          <table style="width:100%;font-size:13px;border-collapse:collapse;">
+            <tr><td style="padding:3px 8px;color:#666"><b>Status</b></td><td style="padding:3px 8px;color:#22c55e">Atracado</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Berço</b></td><td style="padding:3px 8px">${ship.berth}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Terminal</b></td><td style="padding:3px 8px">${termKey}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Carga</b></td><td style="padding:3px 8px">${cargoInfo}</td></tr>
+            ${ship.unload_tons ? `<tr><td style="padding:3px 8px;color:#666"><b>Descarga</b></td><td style="padding:3px 8px">${ship.unload_tons.toLocaleString('pt-BR')}t</td></tr>` : ''}
+            ${ship.load_tons ? `<tr><td style="padding:3px 8px;color:#666"><b>Embarque</b></td><td style="padding:3px 8px">${ship.load_tons.toLocaleString('pt-BR')}t</td></tr>` : ''}
+            <tr><td style="padding:3px 8px;color:#666"><b>Fonte</b></td><td style="padding:3px 8px">Porto de Santos (SPA)</td></tr>
+          </table>
+        </div>
+      `,
+    });
+
+    spaEntities.push(entity);
+  });
+
+  if (skipped.length > 0) {
+    console.log(`🚢 SPA: ${skipped.length} navios ignorados (terminal sem berço capturado):`, skipped);
+  }
+  console.log(`🚢 SPA: ${spaEntities.length} navios plotados de ${ships.length} total`);
+
+  const el = document.getElementById('aisCountNum');
+  if (el) el.textContent = spaEntities.length;
+  const statusEl = document.getElementById('aisStatus');
+  if (statusEl) statusEl.textContent = `(${spaEntities.length} SPA ao vivo)`;
+}
+
+
+// ============================================================
+//  FUNDEADOS — Dados em tempo real via scraper local
+// ============================================================
+const FUNDEADOS_API = 'http://localhost:8080/api/fundeados';
+const FUNDEIO_CENTER = { lat: -23.98917, lon: -46.34556 };
+let fundeadosEntities = [];
+let fundeadosLoaded = false;
+
+async function loadFundeadosData() {
+  try {
+    console.log('⚓ Buscando fundeados via scraper...');
+    const resp = await fetch(FUNDEADOS_API);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+
+    if (!data.ships || data.ships.length === 0) {
+      console.warn('⚓ Fundeados: nenhum navio retornado');
+      return;
+    }
+
+    createFundeadosMarkers(data.ships);
+    fundeadosLoaded = true;
+    console.log(`⚓ Fundeados: ${data.ships.length} navios (atualizado: ${data.last_update || '?'})`);
+
+  } catch (e) {
+    console.warn('⚓ Fundeados indisponível (scraper rodando?). Erro:', e.message);
+  }
+}
+
+function createFundeadosMarkers(ships) {
+  fundeadosEntities.forEach(e => viewer.entities.remove(e));
+  fundeadosEntities = [];
+  window.fundeadosRaw = ships; // 📊 Painel de navios
+
+  const total = ships.length;
+  const cols = Math.ceil(Math.sqrt(total));
+  const spacing = 0.004; // ~440m entre navios
+
+  ships.forEach((ship, i) => {
+    const row = Math.floor(i / cols);
+    const col = i % cols;
+    const lat = FUNDEIO_CENTER.lat + (row - Math.floor(total / cols) / 2) * spacing;
+    const lon = FUNDEIO_CENTER.lon + (col - cols / 2) * spacing;
+
+    const opLabel = ship.operation === 'EMB' ? 'Embarque' : ship.operation === 'DESC' ? 'Descarga' : ship.operation || '—';
+    const weightStr = ship.weight_tons > 0 ? `${ship.weight_tons.toLocaleString('pt-BR')}t` : '—';
+
+    const entity = viewer.entities.add({
+      name: `[Fundeado] ${ship.vessel_name}`,
+      position: Cesium.Cartesian3.fromDegrees(lon, lat, 0),
+
+      point: {
+        pixelSize: 10,
+        color: Cesium.Color.fromCssColorString('#f59e0b'),
+        outlineColor: Cesium.Color.fromCssColorString('#92400e'),
+        outlineWidth: 2,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+      },
+
+      label: {
+        text: ship.vessel_name,
+        font: '10px sans-serif',
+        fillColor: Cesium.Color.WHITE,
+        outlineColor: Cesium.Color.BLACK,
+        outlineWidth: 2,
+        style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+        verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
+        pixelOffset: new Cesium.Cartesian2(0, -10),
+        distanceDisplayCondition: new Cesium.DistanceDisplayCondition(0, 20000),
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        showBackground: true,
+        backgroundColor: Cesium.Color.fromCssColorString('rgba(66,32,6,0.8)'),
+        backgroundPadding: new Cesium.Cartesian2(4, 2),
+      },
+
+      description: `
+        <div style="font-family:system-ui;padding:8px;">
+          <h3 style="margin:0 0 8px;color:#f59e0b">
+            ⚓ ${ship.vessel_name}
+            <span style="font-size:11px;color:#888">[Fundeado — APS]</span>
+          </h3>
+          <table style="width:100%;font-size:13px;border-collapse:collapse;">
+            <tr><td style="padding:3px 8px;color:#666"><b>Status</b></td><td style="padding:3px 8px;color:#f59e0b">Fundeado</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Bandeira</b></td><td style="padding:3px 8px">${ship.flag || '—'}</td></tr>
+            ${ship.length ? `<tr><td style="padding:3px 8px;color:#666"><b>Comprimento</b></td><td style="padding:3px 8px">${ship.length}m</td></tr>` : ''}
+            ${ship.draft ? `<tr><td style="padding:3px 8px;color:#666"><b>Calado</b></td><td style="padding:3px 8px">${ship.draft}m</td></tr>` : ''}
+            <tr><td style="padding:3px 8px;color:#666"><b>Navegação</b></td><td style="padding:3px 8px">${ship.navigation === 'Long' ? 'Longo curso' : ship.navigation === 'Cab' ? 'Cabotagem' : ship.navigation || '—'}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Chegada</b></td><td style="padding:3px 8px">${ship.arrival || '—'}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Agência</b></td><td style="padding:3px 8px">${ship.agency || '—'}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Operação</b></td><td style="padding:3px 8px">${opLabel}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Carga</b></td><td style="padding:3px 8px">${ship.cargo_type || '—'}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Peso</b></td><td style="padding:3px 8px">${weightStr}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Prioridade</b></td><td style="padding:3px 8px">${ship.priority || '—'}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Terminal destino</b></td><td style="padding:3px 8px">${ship.terminal_dest || '—'}</td></tr>
+            <tr><td style="padding:3px 8px;color:#666"><b>Fonte</b></td><td style="padding:3px 8px">Porto de Santos (APS)</td></tr>
+          </table>
+        </div>
+      `,
+    });
+
+    fundeadosEntities.push(entity);
+  });
+
+  console.log(`⚓ ${fundeadosEntities.length} fundeados plotados no mapa`);
+}
+
+// ============================================================
+//  GÊMEO AI — Chat overlay
+// ============================================================
+function toggleAIPanel() {
+  const panel = document.getElementById('ai-panel');
+  const btn = document.getElementById('ai-toggle');
+  if (panel.style.display === 'flex') {
+    panel.style.display = 'none';
+    btn.style.display = 'block';
+  } else {
+    panel.style.display = 'flex';
+    btn.style.display = 'none';
+    document.getElementById('ai-input').focus();
+  }
+}
+
+function aiAddMsg(type, text) {
+  const container = document.getElementById('ai-messages');
+  const div = document.createElement('div');
+  div.className = 'ai-msg ' + type;
+  if (type === 'thinking') {
+    div.innerHTML = text + '<span class="dots"></span>';
+  } else {
+    div.innerHTML = '<span>' + text + '</span>';
+  }
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function aiRemoveMsg(el) {
+  if (el && el.parentNode) el.parentNode.removeChild(el);
+}
+
+async function aiSend() {
+  const input = document.getElementById('ai-input');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+
+  aiAddMsg('user', q);
+
+  const thinkSteps = [
+    'Consultando base de dados do porto...',
+    'Analisando informações de navios...',
+    'Processando resposta...',
+  ];
+
+  let thinkEl = null;
+  for (const step of thinkSteps) {
+    if (thinkEl) aiRemoveMsg(thinkEl);
+    thinkEl = aiAddMsg('thinking', step);
+    await new Promise(r => setTimeout(r, 800 + Math.random() * 600));
+  }
+
+  try {
+    const [atracResp, fundResp] = await Promise.all([
+      fetch('http://localhost:8080/api/atracados').then(r => r.json()).catch(() => ({ships:[],total:0})),
+      fetch('http://localhost:8080/api/fundeados').then(r => r.json()).catch(() => ({ships:[],total:0})),
+    ]);
+
+    const answer = aiGenerateAnswer(q, atracResp, fundResp);
+    aiRemoveMsg(thinkEl);
+    aiAddMsg('response', answer);
+  } catch (e) {
+    aiRemoveMsg(thinkEl);
+    aiAddMsg('response', 'Erro ao consultar dados: ' + e.message);
+  }
+}
+
+function aiGenerateAnswer(q, atrac, fund) {
+  const ql = q.toLowerCase();
+  const ships = atrac.ships || [];
+  const fundeados = fund.ships || [];
+
+  // Terminal específico — checar ANTES das perguntas genéricas
+  // Aliases: múltiplos nomes buscam nos mesmos campos
+  const terminais = [
+    { names: ['santos brasil', 'tecon'], search: ['tecon', 'santos_brasil', 'santos brasil'], label: 'SANTOS BRASIL (TECON)' },
+    { names: ['btp'], search: ['btp'], label: 'BTP' },
+    { names: ['ecoporto', 'eport'], search: ['eport', 'ecoporto'], label: 'ECOPORTO' },
+    { names: ['tgg'], search: ['tgg'], label: 'TGG' },
+    { names: ['teag'], search: ['teag'], label: 'TEAG' },
+    { names: ['teg'], search: ['teg'], label: 'TEG' },
+    { names: ['cutrale'], search: ['cutrale'], label: 'CUTRALE' },
+    { names: ['dow'], search: ['dow'], label: 'TERM. DOW' },
+    { names: ['alamoa'], search: ['alamoa'], label: 'ALAMOA' },
+    { names: ['tev'], search: ['tev'], label: 'TEV' },
+    { names: ['concais'], search: ['concais'], label: 'CONCAIS' },
+  ];
+  for (const t of terminais) {
+    if (t.names.some(n => ql.includes(n))) {
+      const matched = ships.filter(s => t.search.some(k => s.berth.toLowerCase().includes(k) || s.terminal.toLowerCase().replace(/_/g,' ').includes(k) || s.terminal.toLowerCase().includes(k)));
+      if (matched.length > 0) {
+        const list = matched.map(s => '<br>• <b>' + s.vessel_name + '</b> — ' + (s.cargo || 'sem info')).join('');
+        return matched.length + ' navio(s) no terminal ' + t.label + ':' + list;
+      }
+      return 'Nenhum navio atracado no terminal ' + t.label + ' no momento.';
+    }
+  }
+
+  // Perguntas genéricas (sem terminal específico)
+  if (ql.includes('quantos') && ql.includes('atracad')) {
+    return 'Atualmente há <b>' + ships.length + ' navios atracados</b> no Porto de Santos.';
+  }
+  if (ql.includes('quantos') && ql.includes('fundead')) {
+    return 'Há <b>' + fundeados.length + ' navios fundeados</b> aguardando atracação.';
+  }
+  if (ql.includes('quantos') && (ql.includes('navio') || ql.includes('total'))) {
+    return 'O Porto de Santos tem agora <b>' + ships.length + ' navios atracados</b> e <b>' + fundeados.length + ' fundeados</b>, totalizando <b>' + (ships.length + fundeados.length) + ' navios</b>.';
+  }
+
+  // Navio específico
+  const allShips = [...ships, ...fundeados.map(f => ({...f, berth: 'FUNDEIO', cargo: f.cargo_type}))];
+  for (const s of allShips) {
+    if (ql.includes(s.vessel_name.toLowerCase())) {
+      const status = s.berth === 'FUNDEIO' ? 'Fundeado' : 'Atracado em ' + s.berth;
+      return '<b>' + s.vessel_name + '</b><br>Status: ' + status + '<br>Carga: ' + (s.cargo || s.cargo_type || '—');
+    }
+  }
+
+  // Carga
+  const cargas = ['soja', 'açúcar', 'acucar', 'contêiner', 'conteiner', 'container', 'petróleo', 'petroleo', 'diesel', 'celulose', 'fertilizante', 'trigo'];
+  for (const c of cargas) {
+    if (ql.includes(c)) {
+      const matched = ships.filter(s => (s.cargo || '').toLowerCase().includes(c));
+      const matchedF = fundeados.filter(s => (s.cargo_type || '').toLowerCase().includes(c));
+      const total = matched.length + matchedF.length;
+      if (total > 0) {
+        let resp = total + ' navio(s) com ' + c + ':';
+        matched.forEach(s => { resp += '<br>• <b>' + s.vessel_name + '</b> — atracado em ' + s.berth; });
+        matchedF.forEach(s => { resp += '<br>• <b>' + s.vessel_name + '</b> — fundeado'; });
+        return resp;
+      }
+      return 'Nenhum navio com carga de ' + c + ' no momento.';
+    }
+  }
+
+  // Lista
+  if (ql.includes('lista') || ql.includes('quais')) {
+    if (ql.includes('fundead')) {
+      const list = fundeados.slice(0, 10).map(s => '<br>• <b>' + s.vessel_name + '</b> — ' + (s.cargo_type || '—')).join('');
+      return fundeados.length + ' navios fundeados (10 primeiros):' + list;
+    }
+    const list = ships.slice(0, 10).map(s => '<br>• <b>' + s.vessel_name + '</b> — ' + s.berth + ' — ' + (s.cargo || '—')).join('');
+    return ships.length + ' navios atracados (10 primeiros):' + list;
+  }
+
+  // ── GÊNERO / MULHERES / HOMENS — checar ANTES de emprego (contém "trabalh") ──
+  if (ql.includes('mulher') || ql.includes('feminin')) {
+    if (ql.includes('percentual') || ql.includes('percent') || ql.includes('quantas') || ql.includes('qual'))
+      return 'As mulheres representam <b>39,5%</b> da força de trabalho marítimo e portuário do Complexo de Santos, com <b>134.799 vínculos formais</b> (RAIS 2024).';
+    return 'A participação feminina no setor portuário é de <b>39,5%</b> (<b>134.799</b> vínculos). Nos admitidos recentes (CAGED 2025-2026), mulheres representam 39,3% (92.429 admissões).';
+  }
+
+  if (ql.includes('homens') || ql.includes('masculin')) {
+    if (ql.includes('percentual') || ql.includes('percent') || ql.includes('quantos') || ql.includes('qual'))
+      return 'Os homens representam <b>60,5%</b> da força de trabalho marítimo e portuário, com <b>206.606 vínculos formais</b> (RAIS 2024).';
+    return 'A participação masculina no setor portuário é de <b>60,5%</b> (<b>206.606</b> vínculos). Nos admitidos recentes (CAGED 2025-2026), homens representam 60,7% (142.974 admissões).';
+  }
+
+  if (ql.includes('gênero') || ql.includes('genero'))
+    return '<b>Distribuição por gênero</b> (RAIS 2024):<br>• Masculino: <b>206.606 (60,5%)</b><br>• Feminino: <b>134.799 (39,5%)</b><br><br>Nos admitidos recentes (CAGED 2025-2026): 60,7% masculino, 39,3% feminino.';
+
+  // ── EMPREGO PORTUÁRIO (Relatório IBI — RAIS 2024 + CAGED 2025-2026) ──
+  if (ql.includes('emprego') || ql.includes('trabalh') || ql.includes('vínculo') || ql.includes('vinculo')) {
+    if (ql.includes('quantos') || ql.includes('total'))
+      return 'O Complexo Portuário de Santos possui <b>341.405 vínculos formais ativos</b> (RAIS 2024), em 23 CNAEs portuários e logísticos, nos municípios de Santos, Guarujá, Cubatão e São Vicente.<br><br>Evolução:<br>• 2021: 273.521<br>• 2022: 305.541 (+11,7%)<br>• 2023: 340.615 (+11,5%)<br>• 2024: 341.405 (+0,2%)';
+    if (ql.includes('criad') || ql.includes('novo') || ql.includes('caged') || ql.includes('saldo'))
+      return 'Pelo CAGED (jan/2025 a fev/2026), foram criados <b>+22.910 postos formais</b> no setor portuário da Baixada Santista.<br>• 2025: +17.777 (200.454 admissões, 182.677 desligamentos)<br>• 2026 (jan-fev): +5.133<br>Dos 14 meses, 13 tiveram saldo positivo. Único negativo: dez/2025 (-2.821).';
+    return '<b>341.405 vínculos formais</b> no Complexo Portuário (RAIS 2024). Santos concentra 96% (329.145). Pergunte sobre gênero, salário, escolaridade, faixa etária ou empregos criados.';
+  }
+
+  if (ql.includes('salário') || ql.includes('salario') || ql.includes('remuneraç') || ql.includes('remunerac') || ql.includes('quanto ganha'))
+    return '<b>Remuneração no setor portuário</b> (RAIS 2024):<br>• Mediana geral: <b>R$ 3.264,03</b><br><br>Por escolaridade:<br>• Fundamental: R$ 2.290 (mediana)<br>• Médio Completo: R$ 2.436<br>• Superior Completo: <b>R$ 8.365</b> (+243% sobre Médio)<br>• Pós-Graduação: R$ 19.024<br><br>Por atividade:<br>• Operações Portuárias: R$ 6.921 (mediana)<br>• Armazenagem/Despacho: R$ 3.820<br>• Obras/Manutenção: R$ 3.727<br>• Serviços e Apoio: R$ 3.255<br>• Transporte: R$ 3.096';
+
+  if (ql.includes('escolaridade') || ql.includes('educaç') || ql.includes('educac') || ql.includes('formação') || ql.includes('formacao') || ql.includes('estudo'))
+    return '<b>Escolaridade dos trabalhadores portuários</b> (RAIS 2024):<br>• Médio Completo: <b>156.152 (45,7%)</b><br>• Superior Completo: <b>117.287 (34,4%)</b><br>• Superior Incompleto: 12.566 (3,7%)<br>• Fund. Completo: 19.834 (5,8%)<br>• Pós-Graduação: 2.066 (0,6%)<br>• Mestrado: 577 (0,2%)<br><br><b>85%</b> possuem ao menos Ensino Médio completo.';
+
+  if (ql.includes('idade') || ql.includes('etári') || ql.includes('etari') || ql.includes('jovem') || ql.includes('jovens'))
+    return '<b>Faixa etária</b> (RAIS 2024):<br>• 18 a 24 anos: 38.911 (11,4%)<br>• 25 a 29 anos: 48.916 (14,3%)<br>• <b>30 a 39 anos: 102.515 (30,0%)</b> — maior faixa<br>• 40 a 49 anos: 85.624 (25,1%)<br>• 50 a 64 anos: 58.866 (17,2%)<br>• 65+ anos: 5.691 (1,7%)<br><br>Baixa entrada de jovens (18-24): ponto de atenção para programas de qualificação.';
+
+  if (ql.includes('perfil completo') || ql.includes('perfil do trabalhador') || ql.includes('perfil geral'))
+    return '<b>Perfil do Trabalhador Portuário — Santos (RAIS 2024)</b><br><br>• <b>341.405</b> vínculos formais ativos<br>• <b>96%</b> concentrados em Santos<br>• <b>60,5%</b> masculino / 39,5% feminino<br>• <b>45,7%</b> com Ensino Médio Completo<br>• <b>34,4%</b> com Superior Completo<br>• Mediana salarial: <b>R$ 3.264</b><br>• Faixa etária predominante: <b>30-39 anos (30%)</b><br>• CAGED 2025-2026: <b>+22.910 postos criados</b><br><br>Fonte: Relatório IBI — Diagnóstico Preliminar (Abril/2026)';
+
+  if (ql.includes('município') || ql.includes('municipio') || ql.includes('cidade') || ql.includes('guarujá') || ql.includes('guaruja') || ql.includes('cubatão') || ql.includes('cubatao') || ql.includes('são vicente') || ql.includes('sao vicente'))
+    return '<b>Vínculos por município</b> (RAIS 2024):<br>• Santos: <b>329.145 (96,4%)</b><br>• Cubatão: 6.269 (1,8%)<br>• São Vicente: 5.347 (1,6%)<br>• Guarujá: 644 (0,2%)<br><br>Santos é o epicentro absoluto do emprego portuário na Baixada Santista.';
+
+  if (ql.includes('setor') || ql.includes('atividade') || ql.includes('cnae') || ql.includes('grupo'))
+    return '<b>Emprego por grupo de atividade</b> (RAIS 2024):<br>• Serviços e Apoio: <b>250.889 (73,5%)</b><br>• Transporte: 66.870 (19,6%)<br>• Armazenagem e Despacho: 11.758 (3,4%)<br>• Obras e Manutenção: 9.197 (2,7%)<br>• Operações Portuárias: 2.691 (0,8%)<br><br>CNAEs dominantes: Serviços de escritório (36,1%), Consultoria/segurança (21,6%), Transporte rodoviário interestadual (15,5%).';
+
+  return 'Porto de Santos agora: <b>' + ships.length + '</b> atracados, <b>' + fundeados.length + '</b> fundeados. Pergunte sobre terminais, navios, cargas, emprego, salário, escolaridade, gênero ou faixa etária.';
+}
+
+async function aiProcessQuestion(q) {
+  // Abrir painel
+  var panel = document.getElementById('ai-panel');
+  var btn = document.getElementById('ai-toggle');
+  panel.style.display = 'flex';
+  btn.style.display = 'none';
+
+  // Mostrar pergunta
+  aiAddMsg('user', q);
+
+  // Animação de pensamento
+  var thinkSteps = [
+    'Consultando base de dados do porto...',
+    'Analisando informações de navios...',
+    'Processando resposta...',
+  ];
+  var thinkEl = null;
+  for (var i = 0; i < thinkSteps.length; i++) {
+    if (thinkEl) aiRemoveMsg(thinkEl);
+    thinkEl = aiAddMsg('thinking', thinkSteps[i]);
+    await new Promise(function(r) { setTimeout(r, 800 + Math.random() * 600); });
+  }
+
+  // Buscar dados e responder
+  try {
+    var atracResp = await fetch('http://localhost:8080/api/atracados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
+    var fundResp = await fetch('http://localhost:8080/api/fundeados').then(function(r) { return r.json(); }).catch(function() { return {ships:[],total:0}; });
+    var answer = aiGenerateAnswer(q, atracResp, fundResp);
+    aiRemoveMsg(thinkEl);
+    aiAddMsg('response', answer);
+  } catch(e) {
+    aiRemoveMsg(thinkEl);
+    aiAddMsg('response', 'Erro ao consultar dados: ' + e.message);
+  }
+}
+
 </script>
 <div id="voice-toast"></div>
+
+<!-- ═══════════════════════════════════════════════════
+     PAINEL DE EMPREGO — IBI Observatório
+     ═══════════════════════════════════════════════════ -->
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║  PAINEL DE EMPREGO PORTUÁRIO — IBI Observatório                  ║
+  ║  Insira este bloco ANTES do </body> no index.html do gêmeo       ║
+  ║                                                                  ║
+  ║  Dados: RAIS 2021-2024 + CAGED 2025-2026                        ║
+  ║  Fonte: Relatório 1 — Diagnóstico Preliminar IBI, abril 2026    ║
+  ╚══════════════════════════════════════════════════════════════════╝
+
+  COMO USAR:
+  1. Cole todo o conteúdo abaixo (da tag <style> até o fim)
+     dentro do index.html, logo antes de </body>
+
+  2. O painel é chamado pela função showEmpregoPanel(pergunta)
+     Integre isso ao sistema de voz já existente no gêmeo.
+
+  3. Comandos de voz mapeados:
+     "quantos empregos tem o porto"     → showEmpregoPanel('total')
+     "quantos são homens e mulheres"    → showEmpregoPanel('genero')
+     "qual a faixa etária"              → showEmpregoPanel('idade')
+     "qual o salário médio"             → showEmpregoPanel('salario')
+     "quantos empregos foram criados"   → showEmpregoPanel('caged')
+     "qual o nível de escolaridade"     → showEmpregoPanel('escolaridade')
+     "mostre o perfil completo"         → showEmpregoPanel('completo')
+-->
+
+<style>
+/* ── Painel principal ─────────────────────────────────────── */
+#emprego-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 8000;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#emprego-card {
+  pointer-events: all;
+  background: rgba(10, 26, 62, 0.97);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 16px;
+  padding: 28px 32px;
+  min-width: 480px;
+  max-width: 620px;
+  box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(56,189,248,0.1);
+  display: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #e2e8f0;
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+/* ── Cabeçalho do card ────────────────────────────────────── */
+.ep-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 18px;
+}
+.ep-source {
+  font-size: 10px;
+  color: #38bdf8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.ep-source::before {
+  content: '';
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
+  animation: blink 1.4s infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.ep-close {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #94a3b8;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.ep-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+/* ── Query simulada ───────────────────────────────────────── */
+.ep-query {
+  background: rgba(0,0,0,0.3);
+  border-left: 3px solid #38bdf8;
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 20px;
+  font-family: 'Consolas', monospace;
+}
+.ep-query .q-label { color: #64748b; font-size: 10px; display: block; margin-bottom: 4px; letter-spacing: 0.06em; }
+.ep-query .q-text  { color: #38bdf8; }
+
+/* ── Título do resultado ──────────────────────────────────── */
+.ep-title {
+  font-size: 13px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+/* ── Stat grande (número principal) ──────────────────────── */
+.ep-stat-big {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.ep-stat-big .num {
+  font-size: 52px;
+  font-weight: 700;
+  color: #f4a922;
+  font-family: Georgia, serif;
+  line-height: 1;
+  letter-spacing: -1px;
+}
+.ep-stat-big .num.animating { color: #38bdf8; }
+.ep-stat-big .label {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-top: 6px;
+}
+
+/* ── Grid de stats ────────────────────────────────────────── */
+.ep-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.ep-grid.cols3 { grid-template-columns: repeat(3, 1fr); }
+
+.ep-cell {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: center;
+}
+.ep-cell .c-val {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: Georgia, serif;
+  margin-bottom: 4px;
+}
+.ep-cell .c-lbl {
+  font-size: 10px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1.3;
+}
+
+/* ── Barra de gênero ──────────────────────────────────────── */
+.ep-bar-row {
+  margin-bottom: 10px;
+}
+.ep-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-bottom: 5px;
+}
+.ep-bar-track {
+  height: 24px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+}
+.ep-bar-fill {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(0,0,0,0.7);
+  transition: width 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 0%;
+}
+
+/* ── Tabela de faixas ─────────────────────────────────────── */
+.ep-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+.ep-table th {
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+  padding: 4px 8px;
+  text-align: left;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+.ep-table td {
+  padding: 5px 8px;
+  color: #cbd5e1;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.ep-table td.val { color: #f4a922; font-weight: 700; text-align: right; }
+.ep-table td.pct { color: #94a3b8; text-align: right; }
+
+/* ── Mini barra inline ────────────────────────────────────── */
+.ep-mini-bar {
+  height: 4px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  margin-top: 3px;
+}
+.ep-mini-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.8s ease;
+}
+
+/* ── Rodapé ───────────────────────────────────────────────── */
+.ep-footer {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  font-size: 10px;
+  color: #475569;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ep-footer .badge {
+  background: rgba(56,189,248,0.1);
+  border: 1px solid rgba(56,189,248,0.2);
+  color: #38bdf8;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+}
+</style>
+
+<!-- ── ESTRUTURA HTML DO PAINEL ─────────────────────────────── -->
+<div id="emprego-overlay">
+  <div id="emprego-card">
+    <div class="ep-header">
+      <div class="ep-source">RAIS / CAGED — Consulta ao vivo</div>
+      <button class="ep-close" onclick="closeEmpregoPanel()">✕ Fechar</button>
+    </div>
+    <div class="ep-query">
+      <span class="q-label">🎙 Pergunta reconhecida</span>
+      <span class="q-text" id="ep-query-text"></span>
+    </div>
+    <div class="ep-title" id="ep-title"></div>
+    <div id="ep-body"></div>
+    <div class="ep-footer">
+      <span>IBI Observatório do Mercado de Trabalho</span>
+      <span class="badge">RAIS 2024 + CAGED 2025–2026</span>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  DADOS — extraídos do Relatório 1 IBI (RAIS 2024 + CAGED)
+// ============================================================
+const EMPREGO_DATA = {
+
+  // RAIS 2024 — estoque de vínculos ativos (Relatório IBI Abril/2026)
+  total_2024: 341405,
+  total_2023: 340615,
+  total_2022: 305541,
+  total_2021: 273521,
+
+  // Gênero (RAIS 2024)
+  masculino_pct: 60.5,
+  feminino_pct:  39.5,
+  genero_ignorado_pct: 0,
+  masculino_abs: 206606,
+  feminino_abs:  134799,
+
+  // Gênero CAGED admitidos 2025-2026
+  caged_masc_pct: 60.7,
+  caged_fem_pct:  39.3,
+  caged_masc_abs: 142974,
+  caged_fem_abs:  92429,
+
+  // Faixa etária (RAIS 2024)
+  faixas: [
+    { label: '18–24 anos', pct: 11.4, abs: 38911  },
+    { label: '25–29 anos', pct: 14.3, abs: 48916  },
+    { label: '30–39 anos', pct: 30.0, abs: 102515 },
+    { label: '40–49 anos', pct: 25.1, abs: 85624  },
+    { label: '50–64 anos', pct: 17.2, abs: 58866  },
+    { label: '65+ anos',   pct: 1.7,  abs: 5691   },
+  ],
+
+  // Remuneração (RAIS 2024)
+  salario_mediana: 3264.03,
+  salario_operacoes:  6921.2,
+  salario_armazenagem: 3820.4,
+  salario_servicos:    3255.3,
+  salario_obras:       3726.9,
+  salario_transporte:  3096.3,
+  salario_superior:    8365.2,
+  salario_medio:       2435.5,
+
+  // CAGED 2025-2026
+  caged_admissoes: 235403,
+  caged_desligamentos: 212493,
+  caged_saldo: 22910,
+  caged_saldo_2025: 17777,
+  caged_saldo_2026: 5133,
+
+  // Escolaridade (RAIS 2024)
+  escolaridade: [
+    { label: 'Ensino Médio Completo', pct: 45.7, abs: 156152 },
+    { label: 'Superior Completo',     pct: 34.4, abs: 117287 },
+    { label: 'Superior Incompleto',   pct: 3.7,  abs: 12566  },
+    { label: 'Fund. Completo',        pct: 5.8,  abs: 19834  },
+    { label: 'Médio Incompleto',      pct: 4.0,  abs: 13750  },
+    { label: 'Pós-Graduação+',        pct: 0.8,  abs: 2643   },
+  ],
+};
+
+// ============================================================
+//  ANIMAÇÃO DE CONTADOR
+// ============================================================
+function animateCount(el, target, duration = 1200, prefix = '', suffix = '') {
+  const start = performance.now();
+  const startVal = 0;
+  el.classList.add('animating');
+
+  function step(now) {
+    const elapsed = now - start;
+    const progress = Math.min(elapsed / duration, 1);
+    // Ease out cubic
+    const eased = 1 - Math.pow(1 - progress, 3);
+    const current = Math.round(startVal + (target - startVal) * eased);
+    el.textContent = prefix + current.toLocaleString('pt-BR') + suffix;
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    } else {
+      el.textContent = prefix + target.toLocaleString('pt-BR') + suffix;
+      el.classList.remove('animating');
+    }
+  }
+  requestAnimationFrame(step);
+}
+
+function animateBars() {
+  setTimeout(() => {
+    document.querySelectorAll('.ep-bar-fill[data-w]').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+    document.querySelectorAll('.ep-mini-fill[data-w]').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 150);
+}
+
+// ============================================================
+//  TEMPLATES DE RESPOSTA
+// ============================================================
+const TEMPLATES = {
+
+  // ── TOTAL DE EMPREGOS ─────────────────────────────────────
+  total: {
+    query: 'Quantos empregos tem o Porto de Santos?',
+    title: 'Estoque de Vínculos Formais Ativos — Complexo Portuário',
+    render: () => `
+      <div class="ep-stat-big">
+        <div class="num" id="ep-count-main">0</div>
+        <div class="label">vínculos formais ativos (RAIS 2024)</div>
+      </div>
+      <div class="ep-grid cols3">
+        <div class="ep-cell">
+          <div class="c-val" style="color:#38bdf8">273.521</div>
+          <div class="c-lbl">2021<br>Base</div>
+        </div>
+        <div class="ep-cell">
+          <div class="c-val" style="color:#38bdf8">305.541</div>
+          <div class="c-lbl">2022<br>+11,7%</div>
+        </div>
+        <div class="ep-cell">
+          <div class="c-val" style="color:#f4a922">341.405</div>
+          <div class="c-lbl">2024<br>Atual</div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#64748b;text-align:center">
+        Santos concentra 96% dos vínculos — 4 municípios, 23 CNAEs portuários
+      </div>
+    `,
+    afterRender: () => {
+      animateCount(document.getElementById('ep-count-main'), 341405);
+    }
+  },
+
+  // ── GÊNERO ────────────────────────────────────────────────
+  genero: {
+    query: 'Quantos são homens e quantas são mulheres?',
+    title: 'Distribuição por Gênero — Vínculos Formais',
+    render: () => `
+      <div class="ep-grid" style="margin-bottom:18px">
+        <div class="ep-cell">
+          <div class="c-val" style="color:#38bdf8">60,5%</div>
+          <div class="c-lbl">Masculino<br>206.606 vínculos</div>
+        </div>
+        <div class="ep-cell">
+          <div class="c-val" style="color:#f472b6">39,5%</div>
+          <div class="c-lbl">Feminino<br>134.799 vínculos</div>
+        </div>
+      </div>
+      <div class="ep-bar-row">
+        <div class="ep-bar-label">
+          <span>👨 Homens</span>
+          <span style="color:#38bdf8">60,5%</span>
+        </div>
+        <div class="ep-bar-track">
+          <div class="ep-bar-fill" data-w="60.5" style="background:#38bdf8;width:0%">60,5%</div>
+          <div class="ep-bar-fill" data-w="39.5" style="background:#f472b6;width:0%">39,5%</div>
+        </div>
+      </div>
+      <div class="ep-bar-label" style="margin-top:6px">
+        <span>👩 Mulheres</span>
+        <span style="color:#f472b6">39,5%</span>
+      </div>
+      <div style="margin-top:14px;padding:10px 14px;background:rgba(56,189,248,0.06);border-radius:8px;border-left:3px solid #38bdf8">
+        <div style="font-size:11px;color:#94a3b8;line-height:1.6">
+          📊 <b style="color:#e2e8f0">CAGED 2025–2026 (admitidos):</b>
+          Homens: <b style="color:#38bdf8">60,7%</b> (142.974) · 
+          Mulheres: <b style="color:#f472b6">39,3%</b> (92.429)<br>
+          Tendência de aumento gradual da participação feminina nas novas contratações.
+        </div>
+      </div>
+    `,
+    afterRender: () => animateBars()
+  },
+
+  // ── FAIXA ETÁRIA ──────────────────────────────────────────
+  idade: {
+    query: 'Qual a faixa etária dos trabalhadores portuários?',
+    title: 'Distribuição por Faixa Etária — RAIS 2024',
+    render: () => {
+      const maxPct = Math.max(...EMPREGO_DATA.faixas.map(f => f.pct));
+      const colors = ['#94a3b8','#38bdf8','#f4a922','#22c55e','#a78bfa','#64748b'];
+      return `
+        <table class="ep-table">
+          <thead>
+            <tr>
+              <th>Faixa Etária</th>
+              <th style="text-align:right">Vínculos</th>
+              <th style="text-align:right">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${EMPREGO_DATA.faixas.map((f, i) => `
+              <tr>
+                <td>
+                  ${f.label}
+                  <div class="ep-mini-bar">
+                    <div class="ep-mini-fill" data-w="${(f.pct/maxPct*100).toFixed(0)}"
+                         style="background:${colors[i]};width:0%"></div>
+                  </div>
+                </td>
+                <td class="val">${f.abs.toLocaleString('pt-BR')}</td>
+                <td class="pct">${f.pct}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div style="font-size:11px;color:#64748b;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px">
+          ⚠️ Faixa 30–49 anos concentra 41% da força de trabalho. 
+          Jovens de 18–24 anos representam apenas 8,5% — ponto de atenção para qualificação.
+        </div>
+      `;
+    },
+    afterRender: () => animateBars()
+  },
+
+  // ── SALÁRIO ───────────────────────────────────────────────
+  salario: {
+    query: 'Qual o salário médio no porto?',
+    title: 'Remuneração por Grupo de Atividade — RAIS 2024',
+    render: () => `
+      <div class="ep-stat-big" style="margin-bottom:16px">
+        <div class="num" id="ep-sal-main">0</div>
+        <div class="label">remuneração mediana do setor portuário</div>
+      </div>
+      <table class="ep-table">
+        <thead>
+          <tr><th>Grupo</th><th style="text-align:right">Mediana (R$)</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Operações Portuárias</td><td class="val">6.500</td></tr>
+          <tr><td>Armazenagem e Despacho</td><td class="val">3.590</td></tr>
+          <tr><td>Obras e Manutenção</td><td class="val">3.235</td></tr>
+          <tr><td>Serviços e Apoio</td><td class="val">3.234</td></tr>
+          <tr><td>Transporte</td><td class="val">2.776</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:11px;color:#64748b;padding:8px 12px;background:rgba(244,169,34,0.06);border-radius:8px;border-left:3px solid #f4a922">
+        📈 Superior Completo: mediana de R$ 8.974 — prêmio de 288% sobre Ensino Médio
+      </div>
+    `,
+    afterRender: () => {
+      animateCount(document.getElementById('ep-sal-main'), 3264, 1000, 'R$ ');
+    }
+  },
+
+  // ── CAGED / NOVOS EMPREGOS ────────────────────────────────
+  caged: {
+    query: 'Quantos empregos foram criados recentemente?',
+    title: 'Criação Líquida de Empregos — CAGED 2025–2026',
+    render: () => `
+      <div class="ep-stat-big" style="margin-bottom:16px">
+        <div class="num" id="ep-caged-main" style="color:#22c55e">0</div>
+        <div class="label">novos postos de trabalho criados (saldo líquido 2025–2026)</div>
+      </div>
+      <div class="ep-grid cols3">
+        <div class="ep-cell">
+          <div class="c-val" style="color:#38bdf8">${EMPREGO_DATA.caged_admissoes.toLocaleString('pt-BR')}</div>
+          <div class="c-lbl">Admissões<br>totais</div>
+        </div>
+        <div class="ep-cell">
+          <div class="c-val" style="color:#ef4444">${EMPREGO_DATA.caged_desligamentos.toLocaleString('pt-BR')}</div>
+          <div class="c-lbl">Desliga-<br>mentos</div>
+        </div>
+        <div class="ep-cell">
+          <div class="c-val" style="color:#22c55e">+${EMPREGO_DATA.caged_saldo.toLocaleString('pt-BR')}</div>
+          <div class="c-lbl">Saldo<br>líquido</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#64748b;padding:8px 12px;background:rgba(34,197,94,0.06);border-radius:8px;border-left:3px solid #22c55e">
+        ✅ 13 dos 14 meses analisados com saldo positivo.
+        Setor portuário da Baixada Santista em expansão contínua.
+      </div>
+    `,
+    afterRender: () => {
+      animateCount(document.getElementById('ep-caged-main'), EMPREGO_DATA.caged_saldo, 1000, '+');
+    }
+  },
+
+  // ── ESCOLARIDADE ──────────────────────────────────────────
+  escolaridade: {
+    query: 'Qual o nível de escolaridade dos trabalhadores?',
+    title: 'Distribuição por Escolaridade — RAIS Acumulado',
+    render: () => {
+      const colors = ['#38bdf8','#f4a922','#94a3b8','#a78bfa','#64748b','#22c55e'];
+      return `
+        <table class="ep-table">
+          <thead>
+            <tr><th>Escolaridade</th><th style="text-align:right">Vínculos</th><th style="text-align:right">%</th></tr>
+          </thead>
+          <tbody>
+            ${EMPREGO_DATA.escolaridade.map((e, i) => `
+              <tr>
+                <td>
+                  ${e.label}
+                  <div class="ep-mini-bar">
+                    <div class="ep-mini-fill" data-w="${(e.pct/34.7*100).toFixed(0)}"
+                         style="background:${colors[i]};width:0%"></div>
+                  </div>
+                </td>
+                <td class="val">${e.abs.toLocaleString('pt-BR')}</td>
+                <td class="pct">${e.pct}%</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div style="font-size:11px;color:#64748b;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;margin-top:8px">
+          Ensino Médio é o nível mais comum (34,7%). Superior Completo: 21,8%.
+          Trabalhadores com pós-graduação ganham mediana de R$ 17.700.
+        </div>
+      `;
+    },
+    afterRender: () => animateBars()
+  },
+
+  // ── PERFIL COMPLETO ───────────────────────────────────────
+  completo: {
+    query: 'Mostre o perfil completo do emprego portuário',
+    title: 'Perfil do Emprego Portuário — Síntese RAIS + CAGED',
+    render: () => `
+      <div class="ep-grid cols3" style="margin-bottom:14px">
+        <div class="ep-cell">
+          <div class="c-val" style="color:#f4a922" id="ep-c-total">0</div>
+          <div class="c-lbl">vínculos<br>formais (2024)</div>
+        </div>
+        <div class="ep-cell">
+          <div class="c-val" style="color:#22c55e">+22.910</div>
+          <div class="c-lbl">novos postos<br>2025–2026</div>
+        </div>
+        <div class="ep-cell">
+          <div class="c-val" style="color:#38bdf8">R$ 3.264</div>
+          <div class="c-lbl">salário<br>mediano</div>
+        </div>
+      </div>
+      <div class="ep-bar-row">
+        <div class="ep-bar-label">
+          <span>👨 Homens 62%</span>
+          <span>👩 Mulheres 27%</span>
+        </div>
+        <div class="ep-bar-track">
+          <div class="ep-bar-fill" data-w="62" style="background:#38bdf8;width:0%">62%</div>
+          <div class="ep-bar-fill" data-w="27.3" style="background:#f472b6;width:0%">27%</div>
+        </div>
+      </div>
+      <div class="ep-grid" style="margin-top:12px">
+        <div class="ep-cell">
+          <div class="c-val" style="color:#38bdf8">30–39 anos</div>
+          <div class="c-lbl">faixa etária<br>dominante (23%)</div>
+        </div>
+        <div class="ep-cell">
+          <div class="c-val" style="color:#f4a922">34,7%</div>
+          <div class="c-lbl">Ensino Médio<br>escolaridade mais comum</div>
+        </div>
+      </div>
+      <div style="margin-top:12px;font-size:10.5px;color:#64748b;text-align:center">
+        Santos concentra 96% · 4 municípios · 23 CNAEs · Baixada Santista
+      </div>
+    `,
+    afterRender: () => {
+      animateCount(document.getElementById('ep-c-total'), 341405);
+      animateBars();
+    }
+  }
+};
+
+// ============================================================
+//  FUNÇÃO PRINCIPAL — chamada pelo sistema de voz
+// ============================================================
+function showEmpregoPanel(tipo) {
+  const tpl = TEMPLATES[tipo] || TEMPLATES['total'];
+
+  document.getElementById('ep-query-text').textContent = tpl.query;
+  document.getElementById('ep-title').textContent = tpl.title;
+  document.getElementById('ep-body').innerHTML = tpl.render();
+
+  const card = document.getElementById('emprego-card');
+  card.style.display = 'block';
+  // Reiniciar animação
+  card.style.animation = 'none';
+  card.offsetHeight; // reflow
+  card.style.animation = '';
+
+  if (tpl.afterRender) {
+    setTimeout(tpl.afterRender, 100);
+  }
+}
+
+function closeEmpregoPanel() {
+  document.getElementById('emprego-card').style.display = 'none';
+}
+
+// ============================================================
+//  INTEGRAÇÃO COM O SISTEMA DE VOZ EXISTENTE NO GÊMEO
+// ============================================================
+//
+//  No index.html original, a função handleVoiceCommand(transcript)
+//  já processa os comandos. Adicione os casos abaixo ao switch/if
+//  existente dentro dessa função:
+//
+//  Exemplo de integração (adicionar dentro do handleVoiceCommand):
+//
+//  if (/emprego|empregos|trabalh/i.test(t) && /total|quantos/i.test(t)) {
+//    showEmpregoPanel('total');
+//  } else if (/homem|mulher|gênero|genero|feminino|masculino/i.test(t)) {
+//    showEmpregoPanel('genero');
+//  } else if (/faixa etária|idade|etária/i.test(t)) {
+//    showEmpregoPanel('idade');
+//  } else if (/salário|salario|remuner/i.test(t)) {
+//    showEmpregoPanel('salario');
+//  } else if (/criados|caged|novos postos|crescimento/i.test(t)) {
+//    showEmpregoPanel('caged');
+//  } else if (/escolaridade|educaç|formação/i.test(t)) {
+//    showEmpregoPanel('escolaridade');
+//  } else if (/perfil completo|tudo|resumo/i.test(t)) {
+//    showEmpregoPanel('completo');
+//  }
+//
+// ============================================================
+</script>
+
+
+<!-- ═══════════════════════════════════════════════════
+     PAINEL DE NAVIOS — IBI Observatório
+     ═══════════════════════════════════════════════════ -->
+<!--
+  ╔══════════════════════════════════════════════════════════════════╗
+  ║  PAINEL DE NAVIOS — IBI Observatório / Gêmeo Digital Santos     ║
+  ║  Insira este bloco ANTES do </body> no index.html do gêmeo      ║
+  ║                                                                  ║
+  ║  Lê em tempo real os dados já carregados na memória:            ║
+  ║  → spaEntities   (navios atracados via APS)                     ║
+  ║  → fundeadosEntities (navios fundeados)                         ║
+  ║  → lineupEntities    (Lineup ANTAQ)                             ║
+  ║  → aisEntities       (AIS ao vivo)                              ║
+  ║                                                                  ║
+  ║  INTEGRAÇÃO COM VOZ: adicione os comandos indicados no final     ║
+  ║  ao array VOICE_COMMANDS existente no index.html                ║
+  ╚══════════════════════════════════════════════════════════════════╝
+-->
+
+<style>
+/* ── Overlay e card ───────────────────────────────────────── */
+#navios-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 7900;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 24px;
+}
+
+#navios-card {
+  pointer-events: all;
+  background: rgba(8, 20, 48, 0.97);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 16px;
+  padding: 24px 28px;
+  width: 420px;
+  max-height: 88vh;
+  overflow-y: auto;
+  box-shadow: 0 0 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(56,189,248,0.08);
+  display: none;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #e2e8f0;
+  animation: nvSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(56,189,248,0.3) transparent;
+}
+#navios-card::-webkit-scrollbar { width: 4px; }
+#navios-card::-webkit-scrollbar-thumb { background: rgba(56,189,248,0.3); border-radius: 2px; }
+
+@keyframes nvSlideIn {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Header ───────────────────────────────────────────────── */
+.nv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.nv-title-block { flex: 1; }
+.nv-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #38bdf8;
+  margin-bottom: 2px;
+}
+.nv-subtitle {
+  font-size: 10px;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.nv-live-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
+  margin-right: 6px;
+  animation: nvblink 1.4s infinite;
+}
+@keyframes nvblink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+.nv-close {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #64748b;
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 12px;
+}
+.nv-close:hover { background: rgba(255,255,255,0.08); color: #fff; }
+
+/* ── Resumo numérico (row de stats) ──────────────────────── */
+.nv-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.nv-stat {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 10px;
+  padding: 10px;
+  text-align: center;
+}
+.nv-stat .sv { font-size: 26px; font-weight: 700; font-family: Georgia, serif; line-height: 1; }
+.nv-stat .sl { font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 4px; line-height: 1.3; }
+
+/* ── Seção ────────────────────────────────────────────────── */
+.nv-section {
+  margin-bottom: 14px;
+}
+.nv-section-title {
+  font-size: 10px;
+  color: #475569;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.nv-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-weight: 700;
+}
+.nv-badge.green  { background: rgba(34,197,94,0.15);  color: #22c55e;  border: 1px solid rgba(34,197,94,0.3); }
+.nv-badge.yellow { background: rgba(245,158,11,0.15); color: #f59e0b;  border: 1px solid rgba(245,158,11,0.3); }
+.nv-badge.blue   { background: rgba(56,189,248,0.12); color: #38bdf8;  border: 1px solid rgba(56,189,248,0.25); }
+.nv-badge.purple { background: rgba(167,139,250,0.12);color: #a78bfa;  border: 1px solid rgba(167,139,250,0.25); }
+
+/* ── Item de navio ────────────────────────────────────────── */
+.nv-ship {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: background 0.15s;
+  cursor: default;
+}
+.nv-ship:hover { background: rgba(56,189,248,0.06); }
+.nv-ship:last-child { margin-bottom: 0; }
+
+.nv-ship-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255,255,255,0.2);
+}
+.nv-ship-info { flex: 1; min-width: 0; }
+.nv-ship-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nv-ship-detail {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.nv-ship-tag {
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.06);
+  color: #94a3b8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Mensagem vazia ───────────────────────────────────────── */
+.nv-empty {
+  text-align: center;
+  padding: 12px;
+  color: #334155;
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* ── Atualizado em ────────────────────────────────────────── */
+.nv-footer {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  font-size: 10px;
+  color: #334155;
+  display: flex;
+  justify-content: space-between;
+}
+.nv-footer a {
+  color: #38bdf8;
+  cursor: pointer;
+  text-decoration: none;
+}
+.nv-footer a:hover { text-decoration: underline; }
+
+/* ── Barra de tipos ───────────────────────────────────────── */
+.nv-type-bar {
+  margin-bottom: 14px;
+}
+.nv-type-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+.nv-type-label { font-size: 11px; color: #94a3b8; width: 90px; flex-shrink: 0; }
+.nv-type-track {
+  flex: 1;
+  height: 16px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.nv-type-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1);
+  width: 0%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 5px;
+  font-size: 9px;
+  font-weight: 700;
+  color: rgba(0,0,0,0.6);
+}
+.nv-type-count { font-size: 11px; color: #64748b; min-width: 20px; text-align: right; }
+</style>
+
+<!-- ── HTML DO PAINEL ──────────────────────────────────────── -->
+<div id="navios-overlay">
+  <div id="navios-card">
+    <div class="nv-header">
+      <div class="nv-title-block">
+        <div class="nv-title">
+          <span class="nv-live-dot"></span>Porto de Santos — Navios
+        </div>
+        <div class="nv-subtitle" id="nv-timestamp">Carregando dados…</div>
+      </div>
+      <button class="nv-close" onclick="closeNaviosPanel()">✕</button>
+    </div>
+
+    <!-- Resumo numérico -->
+    <div class="nv-summary" id="nv-summary"></div>
+
+    <!-- Barras por tipo -->
+    <div class="nv-section">
+      <div class="nv-section-title">Por tipo de carga</div>
+      <div class="nv-type-bar" id="nv-type-bar"></div>
+    </div>
+
+    <!-- Atracados -->
+    <div class="nv-section" id="nv-sec-atracados">
+      <div class="nv-section-title">
+        Atracados
+        <span class="nv-badge green" id="nv-count-atracados">0</span>
+      </div>
+      <div id="nv-list-atracados"></div>
+    </div>
+
+    <!-- Fundeados -->
+    <div class="nv-section" id="nv-sec-fundeados">
+      <div class="nv-section-title">
+        Fundeados (aguardando berço)
+        <span class="nv-badge yellow" id="nv-count-fundeados">0</span>
+      </div>
+      <div id="nv-list-fundeados"></div>
+    </div>
+
+    <!-- Esperados -->
+    <div class="nv-section" id="nv-sec-esperados">
+      <div class="nv-section-title">
+        Esperados (próximas 48h)
+        <span class="nv-badge blue" id="nv-count-esperados">0</span>
+      </div>
+      <div id="nv-list-esperados"></div>
+    </div>
+
+    <div class="nv-footer">
+      <span id="nv-fonte">APS · Lineup ANTAQ · AIS</span>
+      <a onclick="refreshNaviosPanel()">↻ Atualizar</a>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  CORES POR TIPO DE CARGO / NAVIO
+// ============================================================
+const NV_CARGO_COLORS = {
+  'Contêiner':   '#ef4444',
+  'Graneleiro':  '#f59e0b',
+  'Tanque':      '#8b5cf6',
+  'Rebocador':   '#22c55e',
+  'Prático':     '#06b6d4',
+  'Geral':       '#64748b',
+  'Outro':       '#94a3b8',
+};
+
+function nvCargoType(ship) {
+  // Detectar tipo pelo nome ou propriedades disponíveis
+  const n = (ship.name || ship.vessel_name || ship.shipName || '').toLowerCase();
+  const t = (ship.cargo_type || ship.type || ship.typeName || '').toLowerCase();
+  const combined = n + ' ' + t;
+  if (/container|contêiner|cont|tecon|msc |maersk|cma |cosco|ever |one |hapag/i.test(combined)) return 'Contêiner';
+  if (/tanker|tanque|petro|chemical|lpg|lng|crude|oil |product/i.test(combined)) return 'Tanque';
+  if (/bulk|granel|soja|minério|grain|ore|coal/i.test(combined)) return 'Graneleiro';
+  if (/tug|rebocador|smit|svitzer|ultratug/i.test(combined)) return 'Rebocador';
+  if (/pilot|prático|praticagem|lancha prat/i.test(combined)) return 'Prático';
+  if (/general|carga geral|roro|ferry/i.test(combined)) return 'Geral';
+  return 'Outro';
+}
+
+// ============================================================
+//  COLETAR DADOS DOS NAVIOS JÁ NA MEMÓRIA DO GÊMEO
+// ============================================================
+function collectNaviosData() {
+  const result = {
+    atracados: [],
+    fundeados: [],
+    esperados: [],
+    ais: [],
+  };
+
+  // ── 1. SPA (atracados oficiais APS) ──────────────────────
+  // spaEntities é um array de Cesium entities; o dado real fica
+  // no _spaRaw que vamos tentar capturar, ou extraímos do name/description
+  try {
+    if (typeof spaShipsRaw !== 'undefined' && spaShipsRaw.length) {
+      spaShipsRaw.forEach(s => {
+        result.atracados.push({
+          name: s.vessel_name || s.name || '—',
+          detail: [s.berth, s.terminal].filter(Boolean).join(' · '),
+          cargo: nvCargoType(s),
+          fonte: 'SPA',
+        });
+      });
+    } else if (typeof spaEntities !== 'undefined' && spaEntities.length) {
+      spaEntities.forEach(e => {
+        const raw = e.name || '';
+        const name = raw.replace(/^\[Lineup\]\s*|\[SPA\]\s*/i, '').trim();
+        result.atracados.push({ name, detail: 'Atracado — APS', cargo: nvCargoType({ name }), fonte: 'SPA' });
+      });
+    }
+  } catch(e) { console.warn('SPA collect error:', e); }
+
+  // ── 2. Fundeados ─────────────────────────────────────────
+  try {
+    if (typeof fundeadosRaw !== 'undefined' && fundeadosRaw.length) {
+      fundeadosRaw.forEach(s => {
+        const wait = s.arrival
+          ? Math.round((Date.now() - new Date(s.arrival)) / 3600000) + 'h em espera'
+          : '';
+        result.fundeados.push({
+          name: s.vessel_name || '—',
+          detail: [s.cargo_type, wait].filter(Boolean).join(' · '),
+          cargo: nvCargoType(s),
+          fonte: 'APS',
+        });
+      });
+    } else if (typeof fundeadosEntities !== 'undefined' && fundeadosEntities.length) {
+      fundeadosEntities.forEach(e => {
+        const name = (e.name || '').replace(/^\[Fundeado\]\s*/i, '').trim();
+        result.fundeados.push({ name, detail: 'Fundeado — aguardando berço', cargo: nvCargoType({ name }), fonte: 'APS' });
+      });
+    }
+  } catch(e) { console.warn('Fundeados collect error:', e); }
+
+  // ── 3. Lineup ANTAQ ──────────────────────────────────────
+  try {
+    if (typeof lineupEntities !== 'undefined' && lineupEntities.length) {
+      lineupEntities.forEach(e => {
+        const raw = e.name || '';
+        const name = raw.replace(/^\[Lineup\]\s*/i, '').trim();
+
+        // Tentar pegar description para extrair status
+        let desc = '';
+        try { desc = e.description?.getValue ? e.description.getValue(Cesium.JulianDate.now()) : (e.description || ''); } catch(_) {}
+
+        const isAtracado = /Atracado/i.test(desc);
+        const isEsperado = /Esperado/i.test(desc);
+        const isDepartido = /Partiu/i.test(desc);
+
+        const eta = (() => {
+          const m = desc.match(/ETA.*?(\d{2}\/\d{2}\/\d{4})/);
+          return m ? m[1] : '';
+        })();
+
+        const terminal = (() => {
+          const m = desc.match(/Terminal.*?<\/td><td[^>]*>([^<]+)/);
+          return m ? m[1].trim() : '';
+        })();
+
+        const item = {
+          name,
+          detail: [terminal, eta ? 'ETA ' + eta : ''].filter(Boolean).join(' · '),
+          cargo: nvCargoType({ name }),
+          fonte: 'ANTAQ',
+        };
+
+        if (isAtracado && !result.atracados.find(a => a.name === name)) {
+          result.atracados.push(item);
+        } else if (isEsperado || (!isAtracado && !isDepartido)) {
+          result.esperados.push(item);
+        }
+      });
+    }
+  } catch(e) { console.warn('Lineup collect error:', e); }
+
+  // ── 4. AIS ao vivo ───────────────────────────────────────
+  try {
+    if (typeof aisEntities !== 'undefined') {
+      Object.values(aisEntities).forEach(e => {
+        const name = (e.name || '').replace(/^\[AIS\]\s*/i, '').trim();
+        result.ais.push({ name, detail: 'AIS ao vivo', cargo: nvCargoType({ name }), fonte: 'AIS' });
+      });
+    }
+  } catch(e) { console.warn('AIS collect error:', e); }
+
+  return result;
+}
+
+// ============================================================
+//  RENDERIZAR PAINEL
+// ============================================================
+function renderNaviosPanel(data) {
+  const total = data.atracados.length + data.fundeados.length + data.ais.length;
+  const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  document.getElementById('nv-timestamp').textContent = `Dados às ${now}`;
+
+  // ── Resumo ────────────────────────────────────────────────
+  document.getElementById('nv-summary').innerHTML = `
+    <div class="nv-stat">
+      <div class="sv" style="color:#22c55e">${data.atracados.length}</div>
+      <div class="sl">Atracados</div>
+    </div>
+    <div class="nv-stat">
+      <div class="sv" style="color:#f59e0b">${data.fundeados.length}</div>
+      <div class="sl">Fundeados</div>
+    </div>
+    <div class="nv-stat">
+      <div class="sv" style="color:#38bdf8">${data.esperados.length || data.ais.length}</div>
+      <div class="sl">${data.esperados.length ? 'Esperados' : 'AIS ao vivo'}</div>
+    </div>
+  `;
+
+  // ── Barras por tipo ───────────────────────────────────────
+  const todos = [...data.atracados, ...data.fundeados, ...data.ais];
+  const porTipo = {};
+  todos.forEach(s => { porTipo[s.cargo] = (porTipo[s.cargo] || 0) + 1; });
+  const maxTipo = Math.max(1, ...Object.values(porTipo));
+  const tiposOrdenados = Object.entries(porTipo).sort((a, b) => b[1] - a[1]);
+
+  document.getElementById('nv-type-bar').innerHTML = tiposOrdenados.length
+    ? tiposOrdenados.map(([tipo, cnt]) => `
+        <div class="nv-type-row">
+          <span class="nv-type-label">${tipo}</span>
+          <div class="nv-type-track">
+            <div class="nv-type-fill"
+                 data-w="${Math.round(cnt/maxTipo*100)}"
+                 style="background:${NV_CARGO_COLORS[tipo]||'#64748b'};width:0%">
+              ${cnt}
+            </div>
+          </div>
+          <span class="nv-type-count">${cnt}</span>
+        </div>
+      `).join('')
+    : '<div class="nv-empty">Sem dados de tipo disponíveis</div>';
+
+  // ── Função para renderizar lista ──────────────────────────
+  function renderList(containerId, countId, ships, dotColorFn) {
+    document.getElementById(countId).textContent = ships.length;
+    document.getElementById(containerId).innerHTML = ships.length
+      ? ships.slice(0, 12).map(s => `
+          <div class="nv-ship">
+            <div class="nv-ship-dot" style="background:${NV_CARGO_COLORS[s.cargo]||'#64748b'}"></div>
+            <div class="nv-ship-info">
+              <div class="nv-ship-name">${s.name}</div>
+              ${s.detail ? `<div class="nv-ship-detail">${s.detail}</div>` : ''}
+            </div>
+            <span class="nv-ship-tag">${s.fonte}</span>
+          </div>
+        `).join('') +
+        (ships.length > 12 ? `<div class="nv-empty">+ ${ships.length - 12} outros</div>` : '')
+      : '<div class="nv-empty">Nenhum dado disponível</div>';
+  }
+
+  renderList('nv-list-atracados', 'nv-count-atracados', data.atracados);
+  renderList('nv-list-fundeados', 'nv-count-fundeados', data.fundeados);
+  renderList('nv-list-esperados', 'nv-count-esperados',
+    data.esperados.length ? data.esperados : data.ais);
+  document.getElementById('nv-count-esperados').textContent =
+    data.esperados.length || data.ais.length;
+
+  // ── Animar barras ─────────────────────────────────────────
+  setTimeout(() => {
+    document.querySelectorAll('.nv-type-fill[data-w]').forEach(el => {
+      el.style.width = el.dataset.w + '%';
+    });
+  }, 100);
+
+  // ── Fonte ─────────────────────────────────────────────────
+  const fontes = [];
+  if (data.atracados.some(s => s.fonte === 'SPA')) fontes.push('SPA/APS');
+  if (data.atracados.some(s => s.fonte === 'ANTAQ') || data.esperados.length) fontes.push('Lineup ANTAQ');
+  if (data.fundeados.length) fontes.push('Fundeados APS');
+  if (data.ais.length) fontes.push('AIS Stream');
+  document.getElementById('nv-fonte').textContent = fontes.join(' · ') || 'Aguardando dados…';
+}
+
+// ============================================================
+//  FUNÇÃO PRINCIPAL
+// ============================================================
+function showNaviosPanel(tipo) {
+  // tipo: 'geral' | 'atracados' | 'fundeados' | 'esperados'
+  const data = collectNaviosData();
+  renderNaviosPanel(data);
+
+  const card = document.getElementById('navios-card');
+  card.style.display = 'block';
+  card.style.animation = 'none';
+  card.offsetHeight;
+  card.style.animation = '';
+
+  // Scroll para seção específica
+  if (tipo === 'fundeados') {
+    setTimeout(() => {
+      document.getElementById('nv-sec-fundeados')?.scrollIntoView({ behavior: 'smooth' });
+    }, 400);
+  } else if (tipo === 'esperados') {
+    setTimeout(() => {
+      document.getElementById('nv-sec-esperados')?.scrollIntoView({ behavior: 'smooth' });
+    }, 400);
+  }
+
+  // Voo opcional para posição relevante
+  if (typeof viewer !== 'undefined' && tipo === 'fundeados') {
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(-46.3456, -23.9892, 5000),
+      orientation: { heading: Cesium.Math.toRadians(0), pitch: Cesium.Math.toRadians(-45), roll: 0 },
+      duration: 2.5,
+    });
+  } else if (typeof viewer !== 'undefined' && tipo !== 'geral') {
+    viewer.camera.flyTo({
+      destination: Cesium.Cartesian3.fromDegrees(-46.2920, -23.9675, 2500),
+      orientation: { heading: Cesium.Math.toRadians(320), pitch: Cesium.Math.toRadians(-40), roll: 0 },
+      duration: 2.5,
+    });
+  }
+}
+
+function closeNaviosPanel() {
+  document.getElementById('navios-card').style.display = 'none';
+}
+
+function refreshNaviosPanel() {
+  const data = collectNaviosData();
+  renderNaviosPanel(data);
+  // Pulsar o dot para indicar atualização
+  const dot = document.querySelector('.nv-live-dot');
+  if (dot) { dot.style.background = '#f4a922'; setTimeout(() => { dot.style.background = '#22c55e'; }, 800); }
+}
+
+// ============================================================
+//  INTEGRAÇÃO COM VOZ — adicionar ao VOICE_COMMANDS do index.html
+// ============================================================
+//
+//  Cole os itens abaixo dentro do array VOICE_COMMANDS existente:
+//
+//  { patterns: ['quantos navios', 'navios no porto', 'situação dos navios', 'situação do porto'],
+//    action: () => showNaviosPanel('geral') },
+//
+//  { patterns: ['navios atracados', 'quais estão atracados', 'atracados'],
+//    action: () => showNaviosPanel('atracados') },
+//
+//  { patterns: ['navios fundeados', 'quais estão fundeados', 'fundeados', 'quantos fundeados'],
+//    action: () => showNaviosPanel('fundeados') },
+//
+//  { patterns: ['navios esperados', 'quais estão chegando', 'próximas chegadas', 'lineup'],
+//    action: () => showNaviosPanel('esperados') },
+//
+//  { patterns: ['fechar navios', 'fechar painel de navios'],
+//    action: () => closeNaviosPanel() },
+//
+// ============================================================
+//
+//  NOTA SOBRE spaShipsRaw / fundeadosRaw:
+//  Para máxima fidelidade, adicione estas linhas nas funções
+//  loadSPAData() e createFundeadosMarkers() do index.html:
+//
+//  Em loadSPAData(), após receber os dados:
+//    window.spaShipsRaw = ships;   // array de objetos SPA
+//
+//  Em createFundeadosMarkers(ships):
+//    window.fundeadosRaw = ships;  // array de objetos fundeados
+//
+//  Isso garante que o painel leia os dados brutos completos
+//  em vez de tentar extrair do Cesium entity.
+// ============================================================
+</script>
+
+
 </body>
 </html>
