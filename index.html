@@ -2264,11 +2264,11 @@ const VOICE_COMMANDS = [
   { patterns: ['fechar emprego', 'fechar painel de emprego'],
     action: () => closeEmpregoPanel() },
 
-  // ── Demurrage ──
-  { patterns: ['demurrage', 'sobreestadia', 'sobrestadia', 'quanto de demurrage'],
-    action: () => showDemurragePanel() },
+  // ── Demurrage (fechar ANTES de abrir para não conflitar) ──
   { patterns: ['fechar demurrage', 'fechar painel de demurrage'],
     action: () => closeDemurragePanel() },
+  { patterns: ['demurrage', 'sobreestadia', 'sobrestadia', 'quanto de demurrage'],
+    action: () => showDemurragePanel() },
 
   // Localização
   { patterns: ['ir para porto', 'ver porto', 'porto'],             action: () => voiceFlyTo('porto') },
