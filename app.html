@@ -259,6 +259,7 @@ async function send() {
 
   try {
     let answer = null;
+    let errDetail = '';
     try {
       const resp = await fetch(SCRAPER + '/api/ask', {
         method: 'POST',
@@ -267,10 +268,14 @@ async function send() {
       });
       const data = await resp.json();
       if (data.answer) answer = data.answer.replace(/\n/g, '<br>');
-    } catch(ignored) {}
+      else if (data.error) errDetail = data.error;
+    } catch(e) {
+      errDetail = e.message;
+    }
 
     if (!answer) {
-      answer = 'Desculpe, estou com problemas para acessar a IA agora. Tente novamente em instantes.';
+      answer = 'Desculpe, estou com problemas para acessar a IA agora.';
+      if (errDetail) answer += '<br><span style="font-size:11px;color:#64748b">' + errDetail + '</span>';
     }
 
     removeMsg(thinkEl);
